@@ -1,12 +1,12 @@
 # Nuxt SVG Icon Sprite
 
-Module for Nuxt 3 to automatically create a **SVG <symbol> sprite**.
+Module for Nuxt 3 to automatically create a **SVG `<symbol>` sprite**.
 Currently in a beta, open for feedback and breaking changes!
 
 - Aggregate all SVG files into a single sprite file
 - Reduce bundle size and SSR rendered page size
 - Full HMR support
-- Provides <SpriteSymbol> component to render <svg> with <use>
+- Provides `<SpriteSymbol>` component to render `<svg>` with `<use>`
 - Loads the sprite.svg from URL (/_nuxt/sprite.svg)
 - Typescript type checking for available symbols
 
@@ -68,4 +68,4 @@ The symbol is referenced from the sprite via URL.
 - Provide option to inline sprite in SSR
 - Docs
 - Tests
-- Separate component to only render <use> without <svg>
+- Separate component to only render `<use>` without `<svg>`
