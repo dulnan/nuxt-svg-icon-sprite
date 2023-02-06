@@ -1,5 +1,7 @@
 <template>
-  <use :xlink:href="SPRITE_PATH + '#' + name" />
+  <svg>
+    <use :xlink:href="SPRITE_PATH + '#' + name" />
+  </svg>
 </template>
 
 <script lang="ts" setup>

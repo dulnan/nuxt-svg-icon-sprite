@@ -13,7 +13,7 @@ import { hash } from 'ohash'
 import SvgSprite from 'svg-sprite'
 import type { Config, DefsAndSymbolSpecificModeConfig } from 'svg-sprite'
 
-export const logger = useLogger('nuxt-multi-cache')
+export const logger = useLogger('nuxt-svg-icon-sprite')
 
 type SpriteConfig = {
   /**
@@ -29,7 +29,7 @@ type SpriteConfig = {
     shape?: Config['shape']
     log?: Config['log']
     mode?: {
-      defs?: DefsAndSymbolSpecificModeConfig
+      symbol?: DefsAndSymbolSpecificModeConfig
     }
   }
 
@@ -116,7 +116,6 @@ export default defineNuxtModule<ModuleOptions>({
     async function generateSprite() {
       // @TODO: Support for multiple sprites.
       const spriteConfig = moduleOptions.sprites.default
-      console.log(spriteConfig.svgSpriteConfig)
 
       // Create spriter instance.
       const spriter = new SvgSprite({
@@ -124,7 +123,7 @@ export default defineNuxtModule<ModuleOptions>({
         shape: spriteConfig.svgSpriteConfig?.shape,
         log: spriteConfig.svgSpriteConfig?.log,
         mode: {
-          defs: spriteConfig.svgSpriteConfig?.mode?.defs || true,
+          symbol: spriteConfig.svgSpriteConfig?.mode?.symbol || true,
         },
       })
 
@@ -164,10 +163,10 @@ export default defineNuxtModule<ModuleOptions>({
       // Compile sprite.
       try {
         const { data, result } = await spriter.compileAsync()
-        const content = result.defs.sprite.contents.toString()
+        const content = result.symbol.sprite.contents.toString()
         context.content = content
         context.hash = hash(content)
-        context.icons = data.defs.shapes.map((v: any) => v.name)
+        context.icons = data.symbol.shapes.map((v: any) => v.name)
       } catch (e) {
         logger.error('Failed to generate SVG sprite.')
         logger.log(e)
