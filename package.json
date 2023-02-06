@@ -1,0 +1,53 @@
+{
+  "name": "nuxt-svg-icon-sprite",
+  "version": "0.0.1-beta.0",
+  "description": "Generate SVG symbol sprites for icons and illustrations.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dulnan/nuxt-svg-icon-sprite.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/module.mjs",
+      "require": "./dist/module.cjs"
+    }
+  },
+  "main": "./dist/module.cjs",
+  "types": "./dist/types.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "prepack": "nuxt-module-build",
+    "dev": "nuxi dev playground --trace-warnings",
+    "dev:build": "nuxi build playground",
+    "dev:prepare": "nuxt-module-build --stub && nuxi prepare playground",
+    "docs:dev": "vitepress dev docs --port 5000",
+    "docs:build": "vitepress build docs",
+    "docs:serve": "vitepress serve docs --port 5000",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@nuxt/kit": "^3.1.2",
+    "svg-sprite": "^2.0.2"
+  },
+  "devDependencies": {
+    "@nuxt/module-builder": "^0.2.1",
+    "@nuxt/schema": "^3.1.2",
+    "@nuxtjs/eslint-config-typescript": "^12.0.0",
+    "@types/svg-sprite": "^0.0.34",
+    "@vitest/coverage-c8": "^0.28.4",
+    "eslint": "^8.33.0",
+    "eslint-config-prettier": "^8.6.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "nuxt": "^3.1.2",
+    "prettier": "^2.8.3",
+    "tailwindcss": "^3.2.4",
+    "vitepress": "^1.0.0-alpha.45",
+    "vitest": "^0.28.4"
+  }
+}

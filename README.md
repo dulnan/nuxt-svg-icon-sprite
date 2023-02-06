@@ -1,0 +1,1 @@
+# Nuxt SVG Icon Sprite
