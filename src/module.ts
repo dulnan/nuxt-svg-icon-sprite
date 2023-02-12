@@ -51,9 +51,13 @@ export type ModuleOptions = {
    * Currently only one sprite is supported, multiple will be possible in the
    * future.
    */
-  sprites: {
-    default: SpriteConfig
-  }
+  sprites: Record<string, SpriteConfig>
+}
+
+type SpriteContext = {
+  content: string
+  hash: string
+  icons: string[]
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -92,31 +96,32 @@ export default defineNuxtModule<ModuleOptions>({
     // Add plugin and transpile runtime directory.
     nuxt.options.build.transpile.push(resolver.resolve('runtime'))
 
+    const spriteKeys = Object.keys(moduleOptions.sprites)
+
     // Keeps track of the current generated sprite data.
-    const context = {
-      // The compiled markup of the SVG sprite.
-      content: '',
-
-      // A build hash of the sprite.
-      hash: '',
-
-      // An array of generated symbol names.
-      icons: [] as string[],
-    }
+    const context: Record<string, SpriteContext> = spriteKeys.reduce<
+      Record<string, SpriteContext>
+    >((acc, v) => {
+      acc[v] = {
+        content: '',
+        hash: '',
+        icons: [],
+      }
+      return acc
+    }, {})
 
     // Add composables.
     addImportsDir(resolver.resolve('runtime/composables'))
 
     // Return the file name of the sprite.
-    function getSpriteFileName() {
-      return DEV ? 'sprite.svg' : `sprite.${context.hash}.svg`
+    function getSpriteFileName(name: string) {
+      return DEV
+        ? `sprite-${name}.svg`
+        : `sprite-${name}.${context[name].hash}.svg`
     }
 
     // Builds the SVG sprite.
-    async function generateSprite() {
-      // @TODO: Support for multiple sprites.
-      const spriteConfig = moduleOptions.sprites.default
-
+    async function generateSprite(name: string, spriteConfig: SpriteConfig) {
       // Create spriter instance.
       const spriter = new SvgSprite({
         svg: spriteConfig.svgSpriteConfig?.svg,
@@ -164,29 +169,33 @@ export default defineNuxtModule<ModuleOptions>({
       try {
         const { data, result } = await spriter.compileAsync()
         const content = result.symbol.sprite.contents.toString()
-        context.content = content
-        context.hash = hash(content)
-        context.icons = data.symbol.shapes.map((v: any) => v.name)
+        context[name].content = content
+        context[name].hash = hash(content)
+        context[name].icons = data.symbol.shapes.map((v: any) => v.name)
       } catch (e) {
         logger.error('Failed to generate SVG sprite.')
         logger.log(e)
       }
     }
 
-    // Generate sprite initially.
-    await generateSprite()
+    await Promise.all(
+      spriteKeys.map(async (key) => {
+        // Generate sprite initially.
+        await generateSprite(key, moduleOptions.sprites[key])
 
-    // Add the template for the SVG sprite.
-    addTemplate({
-      filename: 'dist/client/_nuxt/' + getSpriteFileName(),
-      write: true,
-      options: {
-        nuxtSvgSprite: true,
-      },
-      getContents: () => {
-        return context.content
-      },
-    })
+        // Add the template for the SVG sprite.
+        addTemplate({
+          filename: 'dist/client/_nuxt/' + getSpriteFileName(key),
+          write: true,
+          options: {
+            nuxtSvgSprite: true,
+          },
+          getContents: () => {
+            return context[key].content
+          },
+        })
+      }),
+    )
 
     // Template containing the types and the relative URL path to the generated
     // sprite.
@@ -197,16 +206,30 @@ export default defineNuxtModule<ModuleOptions>({
         nuxtSvgSprite: true,
       },
       getContents: () => {
-        const type = context.icons
+        const type = spriteKeys
+          .map((v) => {
+            const prefix = v === 'default' ? '' : v + '/'
+            return context[v].icons.map((icon) => {
+              return prefix + icon
+            })
+          })
+          .flat()
           .map((v) => {
             return `'${v}'`
           })
           .join('\n  | ')
 
-        let fileName = getSpriteFileName()
-        if (DEV) {
-          fileName += '?t=' + Date.now()
-        }
+        const fileNames = spriteKeys.reduce<Record<string, string>>(
+          (acc, key) => {
+            let name = getSpriteFileName(key)
+            if (DEV) {
+              name += '?t=' + Date.now()
+            }
+            acc[key] = '/_nuxt/' + name
+            return acc
+          },
+          {},
+        )
 
         return `
 /**
@@ -215,8 +238,32 @@ export default defineNuxtModule<ModuleOptions>({
 export type NuxtSvgSpriteSymbol =
   | ${type}
 
-export const SPRITE_PATH = '/_nuxt/${fileName}'
-export const SYMBOLS = ${JSON.stringify(context.icons)}
+export const SPRITE_PATHS = ${JSON.stringify(fileNames)}
+`
+      },
+    })
+
+    const templateData = addTemplate({
+      filename: 'nuxt-svg-sprite-data.ts',
+      write: true,
+      options: {
+        nuxtSvgSprite: true,
+      },
+      getContents: () => {
+        const allIcons = spriteKeys
+          .map((v) => {
+            const prefix = v === 'default' ? '' : v + '/'
+            return context[v].icons.map((icon) => {
+              return prefix + icon
+            })
+          })
+          .flat()
+
+        return `
+/**
+ * Keys of all generated SVG sprite symbols.
+ */
+export const ALL_SYMBOL_KEYS = ${JSON.stringify(allIcons)}
 `
       },
     })
@@ -224,7 +271,8 @@ export const SYMBOLS = ${JSON.stringify(context.icons)}
     // Add an alias for the generated template. This is used inside the
     // SpriteSymbol component to type the props and to get the URL to the
     // sprite.
-    nuxt.options.alias['#nuxt-svg-sprite'] = template.dst
+    nuxt.options.alias['#nuxt-svg-sprite/runtime'] = template.dst
+    nuxt.options.alias['#nuxt-svg-sprite/data'] = templateData.dst
 
     // Add the component.
     await addComponent({
@@ -243,7 +291,11 @@ export const SYMBOLS = ${JSON.stringify(context.icons)}
           }
 
           const hashBefore = context.hash
-          await generateSprite()
+          await Promise.all(
+            spriteKeys.map((v) => {
+              return generateSprite(v, moduleOptions.sprites[v])
+            }),
+          )
 
           // Don't update templates if nothing changed.
           if (hashBefore === context.hash) {

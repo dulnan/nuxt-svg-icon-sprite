@@ -9,6 +9,9 @@ export default defineNuxtConfig({
       default: {
         importPatterns: ['./assets/symbols/**/*.svg'],
       },
+      special: {
+        importPatterns: ['./assets/symbols-special/**/*.svg'],
+      },
     },
   },
 

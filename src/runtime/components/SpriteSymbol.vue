@@ -1,15 +1,31 @@
 <template>
   <svg>
-    <use :xlink:href="SPRITE_PATH + '#' + name" />
+    <use :xlink:href="href" />
   </svg>
 </template>
 
 <script lang="ts" setup>
-import type { PropType } from 'vue'
-import type { NuxtSvgSpriteSymbol } from '#nuxt-svg-sprite'
-import { SPRITE_PATH } from '#nuxt-svg-sprite'
+import { computed, PropType } from 'vue'
+import type { NuxtSvgSpriteSymbol } from '#nuxt-svg-sprite/runtime'
+import { SPRITE_PATHS } from '#nuxt-svg-sprite/runtime'
 
-defineProps({
+const props = defineProps({
   name: String as PropType<NuxtSvgSpriteSymbol>,
+})
+
+const ctx = computed(() => {
+  const [sprite, name] = props.name.split('/')
+  if (!name) {
+    return {
+      sprite: 'default',
+      name: sprite,
+    }
+  }
+
+  return { sprite, name }
+})
+
+const href = computed(() => {
+  return SPRITE_PATHS[ctx.value.sprite] + '#' + ctx.value.name
 })
 </script>
