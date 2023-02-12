@@ -144,6 +144,14 @@ export default defineNuxtConfig({
     sprites: {
       default: {
         importPatterns: ['./assets/icons/**/*.svg'],
+
+        // Directly provide symbol SVG by path.
+        // These are added after the auto imports defined in the
+        // `importPatterns`.
+        symbolFiles: {
+          email: '~/node_modules/some_package/assets/icons/email.svg'
+        },
+
         processSvg(markup: string, filePath: string) {
           // Executed for each loaded <svg> file.
           // Do something with the markup, e.g. execute SVGO or do some string
@@ -181,5 +189,5 @@ The options are the same for each `key` in `sprites`.
 
 - Provide more information about generated sprite via composable
 - Provide option to inline sprite in SSR
-- Docs
+- Option to directly provide symbols as markup
 - Tests

@@ -22,8 +22,7 @@ export type ModuleOptions = {
   /**
    * Define the config for each sprite to generate.
    *
-   * Currently only one sprite is supported, multiple will be possible in the
-   * future.
+   * If a sprite with name `default` is provided the names won't be prefixed.
    */
   sprites: Record<string, SpriteConfig>
 }
@@ -76,6 +75,7 @@ export default defineNuxtModule<ModuleOptions>({
       {},
     )
 
+    // Generate all sprites and update module context.
     function generateAllSprites() {
       return Promise.all(
         spriteKeys.map(async (key) => {

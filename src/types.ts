@@ -10,6 +10,14 @@ export type SpriteConfig = {
   importPatterns?: string[]
 
   /**
+   * Directly define symbols to include after the automatic imports.
+   *
+   * Should be an object with the key being the symbol ID and the value the path
+   * to the SVG.
+   */
+  symbolFiles?: Record<string, string>
+
+  /**
    * Process each SVG before it is converted to a symbol.
    *
    * If you want to use SVGO, this is where you can do that.

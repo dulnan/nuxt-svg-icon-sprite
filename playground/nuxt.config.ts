@@ -7,7 +7,14 @@ export default defineNuxtConfig({
   svgIconSprite: {
     sprites: {
       default: {
-        importPatterns: ['./assets/symbols/**/*.svg'],
+        importPatterns: [
+          './assets/symbols/**/*.svg',
+          './asdfasdfasdf/**/*.svg',
+        ],
+        symbols: {
+          email: '~/assets/email.svg',
+          foobar: '~/assets/emailfoobar.svg',
+        },
       },
       special: {
         importPatterns: ['./assets/symbols-special/**/*.svg'],

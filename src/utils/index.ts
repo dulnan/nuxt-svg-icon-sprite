@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 import { hash } from 'ohash'
-import { useLogger, resolveFiles } from '@nuxt/kit'
+import { useLogger, resolveFiles, resolvePath } from '@nuxt/kit'
 import {
   Symbol,
   SymbolProcessed,
@@ -9,6 +9,16 @@ import {
   SpriteContext,
   ModuleContext,
 } from '../types'
+
+/**
+ * Type check for falsy values.
+ *
+ * Used as the callback for array.filter, e.g.
+ * items.filter(falsy)
+ */
+export function falsy<T>(value: T): value is NonNullable<T> {
+  return value !== null && value !== undefined
+}
 
 export const logger = useLogger('nuxt-svg-icon-sprite')
 
@@ -20,15 +30,13 @@ export function extractSymbol(source = ''): Symbol {
   )
 
   const attributes =
-    matches?.reduce<Record<string, string>>((result, attribute) => {
+    matches?.reduce<Record<string, string>>((acc, attribute) => {
       const [name, unformattedValue] = attribute.split('=')
-
-      // eslint-disable-next-line no-param-reassign
-      result[name] = unformattedValue
+      acc[name] = unformattedValue
         ? unformattedValue.replace(/['"]/g, '')
         : 'true'
 
-      return result
+      return acc
     }, {}) || {}
 
   return {
@@ -60,15 +68,33 @@ export async function generateSprite(
   spriteConfig: SpriteConfig,
   srcDir: string,
 ): Promise<SpriteContext | undefined> {
-  // Find all required files.
-  const files = await resolveFiles(
-    srcDir,
-    // It's guaranteed to be here because we declare it as a default.
-    spriteConfig.importPatterns!,
-    {
+  const files: { filePath: string; id: string }[] = []
+
+  // Autoimported SVGs.
+  if (spriteConfig.importPatterns?.length) {
+    // Find all required files.
+    const autoFiles = await resolveFiles(srcDir, spriteConfig.importPatterns, {
       followSymbolicLinks: false,
-    },
-  )
+    }).then((files) => {
+      return files.map((filePath) => {
+        const id = path.parse(filePath).name
+        return { filePath, id }
+      })
+    })
+    files.push(...autoFiles)
+  }
+
+  // User-provided symbols.
+  if (spriteConfig.symbolFiles) {
+    const customSymbols = await Promise.all(
+      Object.keys(spriteConfig.symbolFiles).map((id) => {
+        return resolvePath(spriteConfig.symbolFiles![id]).then((filePath) => {
+          return { filePath, id }
+        })
+      }),
+    )
+    files.push(...customSymbols)
+  }
 
   if (!files.length) {
     logger.error('No SVG files found in specified importPatterns.')
@@ -77,8 +103,7 @@ export async function generateSprite(
 
   // Read files and add them to the spriter instance.
   const symbols: SymbolProcessed[] = await Promise.all(
-    files.map((filePath) => {
-      const id = path.parse(filePath).name
+    files.map(({ filePath, id }) => {
       return fs
         .readFile(filePath)
         .then((contents) => {
@@ -109,10 +134,15 @@ export async function generateSprite(
           const content = `<symbol ${attributes}>${result.content}</symbol>`
           return { content, id, filePath }
         })
+        .catch((e) => {
+          logger.error(e)
+        })
     }),
-  ).then((symbols) => {
-    return symbols.filter(filterDuplicates())
-  })
+  )
+    .then((symbols) => {
+      return symbols.filter(falsy) as SymbolProcessed[]
+    })
+    .then((symbols) => symbols.filter(filterDuplicates()))
 
   // Compile sprite.
   try {
