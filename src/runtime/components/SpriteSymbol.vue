@@ -1,5 +1,6 @@
 <template>
-  <svg>
+  <use v-if="noWrapper && ctx.name" :xlink:href="href" />
+  <svg v-else-if="ctx.name">
     <use :xlink:href="href" />
   </svg>
 </template>
@@ -11,10 +12,11 @@ import { SPRITE_PATHS } from '#nuxt-svg-sprite/runtime'
 
 const props = defineProps({
   name: String as PropType<NuxtSvgSpriteSymbol>,
+  noWrapper: Boolean,
 })
 
 const ctx = computed(() => {
-  const [sprite, name] = props.name.split('/')
+  const [sprite, name] = (props.name || '').split('/')
   if (!name) {
     return {
       sprite: 'default',

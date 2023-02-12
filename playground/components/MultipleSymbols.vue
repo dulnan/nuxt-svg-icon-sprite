@@ -3,6 +3,7 @@
     <SpriteSymbol
       v-for="n in TOTAL"
       :key="n"
+      :no-wrapper="true"
       name="special/silhouette"
       width="1000"
       height="1000"
