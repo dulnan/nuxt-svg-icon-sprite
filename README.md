@@ -120,7 +120,62 @@ This is useful if you want to render multiple symbols in one `<svg>` tag.
 
 Get information about the generated sprites and their symbols during runtime.
 
-Useful if you want to render a list of all 
+Useful if you want to render a list of all symbols in a styleguide:
+
+```vue
+<template>
+  <SpriteSymbol v-for="symbol in symbols" :key="symbol" :name="symbol" />
+</template>
+
+<script setup lang="ts">
+const { symbols } = useSpriteData()
+</script>
+```
+
+## Full Module Options
+
+```typescript
+import { optimize } from 'svgo'
+
+export default defineNuxtConfig({
+  modules: ['nuxt-svg-icon-sprite'],
+
+  svgIconSprite: {
+    sprites: {
+      default: {
+        importPatterns: ['./assets/icons/**/*.svg'],
+        processSvg(markup: string, filePath: string) {
+          // Executed for each loaded <svg> file.
+          // Do something with the markup, e.g. execute SVGO or do some string
+          // replacements.
+          return optimize(markup).data
+        },
+        processSymbol(symbol, filePath) {
+          // Add attributes to the parsed symbol.
+          symbol.attributes.width = '24'
+          symbol.attributes.height = '24'
+          symbol.attributes.viewBox = '0 0 24 24'
+
+          // Afterwards the parsed symbol is converted to markup.
+          return symbol
+        },
+        processSprite(markup, name) {
+          // Executed for each sprite right before its saved.
+          // Run SVGO or whatever you like.
+          // Markup contains:
+          // <svg>
+          //   <symbol id="user">...</symbol>
+          //   <symbol id="foobar">...</symbol>
+          // </svg>
+          return markup
+        }
+      },
+    },
+  },
+})
+```
+
+The options are the same for each `key` in `sprites`.
 
 ## TODO
 
