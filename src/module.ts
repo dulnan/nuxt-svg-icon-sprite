@@ -332,6 +332,12 @@ export const ALL_SYMBOL_KEYS: NuxtSvgSpriteSymbol[] = ${JSON.stringify(
       global: true,
     })
 
+    function getAllHashes() {
+      return Object.keys(context)
+        .map((v) => context[v].hash)
+        .join('')
+    }
+
     if (DEV) {
       nuxt.hook('vite:serverCreated', (viteServer) => {
         // Watch for file changes in dev mode.
@@ -341,15 +347,16 @@ export const ALL_SYMBOL_KEYS: NuxtSvgSpriteSymbol[] = ${JSON.stringify(
             return
           }
 
-          const hashBefore = context.hash
+          const hashBefore = getAllHashes()
           await Promise.all(
             spriteKeys.map((v) => {
               return generateSprite(v, moduleOptions.sprites[v])
             }),
           )
+          const hashAfter = getAllHashes()
 
           // Don't update templates if nothing changed.
-          if (hashBefore === context.hash) {
+          if (hashBefore === hashAfter) {
             return
           }
 
