@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs'
+import path from 'path'
 import {
   createResolver,
   defineNuxtModule,
@@ -10,10 +11,38 @@ import {
   addImportsDir,
 } from '@nuxt/kit'
 import { hash } from 'ohash'
-import SvgSprite from 'svg-sprite'
-import type { Config, DefsAndSymbolSpecificModeConfig } from 'svg-sprite'
 
 export const logger = useLogger('nuxt-svg-icon-sprite')
+
+type Symbol = {
+  content: string
+  attributes: Record<string, string>
+}
+
+function extractSymbol(source = ''): Symbol {
+  const [, parsedAttributes, content] =
+    source.match(/<svg(.*?)>(.*?)<\/svg>/is) || []
+  const matches = (parsedAttributes || '').match(
+    /([\w-:]+)(=)?("[^<>"]*"|'[^<>']*'|[\w-:]+)/g,
+  )
+
+  const attributes =
+    matches?.reduce<Record<string, string>>((result, attribute) => {
+      const [name, unformattedValue] = attribute.split('=')
+
+      // eslint-disable-next-line no-param-reassign
+      result[name] = unformattedValue
+        ? unformattedValue.replace(/['"]/g, '')
+        : 'true'
+
+      return result
+    }, {}) || {}
+
+  return {
+    attributes,
+    content,
+  }
+}
 
 type SpriteConfig = {
   /**
@@ -22,23 +51,21 @@ type SpriteConfig = {
   importPatterns?: string[]
 
   /**
-   * Configuration for svg-sprite.
-   */
-  svgSpriteConfig?: {
-    svg?: Config['svg']
-    shape?: Config['shape']
-    log?: Config['log']
-    mode?: {
-      symbol?: DefsAndSymbolSpecificModeConfig
-    }
-  }
-
-  /**
-   * Process each SVG before it is added to the sprite.
+   * Process each SVG before it is converted to a symbol.
    *
    * For example you could execute svgo on the SVG markup.
    */
   processSvg?: (markup: string, filePath: string) => string | Promise<string>
+
+  /**
+   * Process each parsed symbol before it is added to the sprite.
+   *
+   * For example you could execute svgo on the SVG markup.
+   */
+  processSymbol?: (
+    symbol: Symbol,
+    filePath: string,
+  ) => Symbol | string | Promise<Symbol | string>
 }
 
 /**
@@ -72,14 +99,6 @@ export default defineNuxtModule<ModuleOptions>({
     sprites: {
       default: {
         importPatterns: ['./assets/icons/*.svg'],
-        svgSpriteConfig: {
-          shape: {
-            dimension: {
-              attributes: true,
-            },
-            transform: [],
-          },
-        },
       },
     },
   },
@@ -122,16 +141,6 @@ export default defineNuxtModule<ModuleOptions>({
 
     // Builds the SVG sprite.
     async function generateSprite(name: string, spriteConfig: SpriteConfig) {
-      // Create spriter instance.
-      const spriter = new SvgSprite({
-        svg: spriteConfig.svgSpriteConfig?.svg,
-        shape: spriteConfig.svgSpriteConfig?.shape,
-        log: spriteConfig.svgSpriteConfig?.log,
-        mode: {
-          symbol: spriteConfig.svgSpriteConfig?.mode?.symbol || true,
-        },
-      })
-
       // Find all required files.
       const files = await resolveFiles(
         srcResolver.resolve(),
@@ -148,8 +157,9 @@ export default defineNuxtModule<ModuleOptions>({
       }
 
       // Read files and add them to the spriter instance.
-      await Promise.all(
+      const symbols = await Promise.all(
         files.map((filePath) => {
+          const id = path.parse(filePath).name
           return fs
             .readFile(filePath)
             .then((contents) => {
@@ -160,18 +170,37 @@ export default defineNuxtModule<ModuleOptions>({
               return markup
             })
             .then((markup) => {
-              spriter.add(filePath, null, markup)
+              const symbol = extractSymbol(markup)
+              symbol.attributes.id = id
+              if (spriteConfig.processSymbol) {
+                return spriteConfig.processSymbol(symbol, filePath)
+              }
+              return symbol
+            })
+            .then((result) => {
+              if (typeof result === 'string') {
+                return { content: result, id }
+              }
+
+              const attributes: string = Object.keys(result.attributes)
+                .map((attribute: any) => {
+                  return `${attribute}="${result.attributes[attribute]}"`
+                })
+                .join(' ')
+              const content = `<symbol ${attributes}>${result.content}</symbol>`
+              return { content, id }
             })
         }),
       )
 
       // Compile sprite.
       try {
-        const { data, result } = await spriter.compileAsync()
-        const content = result.symbol.sprite.contents.toString()
+        const content = `<svg xmlns="http://www.w3.org/2000/svg">\n  ${symbols
+          .map((v) => v.content)
+          .join('  \n')}\n</svg>`
         context[name].content = content
         context[name].hash = hash(content)
-        context[name].icons = data.symbol.shapes.map((v: any) => v.name)
+        context[name].icons = symbols.map((v) => v.id)
       } catch (e) {
         logger.error('Failed to generate SVG sprite.')
         logger.log(e)
