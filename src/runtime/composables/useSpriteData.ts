@@ -1,7 +1,8 @@
+import type { NuxtSvgSpriteSymbol } from '#nuxt-svg-sprite/runtime'
 import { ALL_SYMBOL_KEYS } from '#nuxt-svg-sprite/data'
 
 type SpriteData = {
-  symbols: string[]
+  symbols: NuxtSvgSpriteSymbol[]
 }
 
 export default function (): SpriteData {

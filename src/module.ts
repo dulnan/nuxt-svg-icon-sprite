@@ -53,19 +53,27 @@ type SpriteConfig = {
   /**
    * Process each SVG before it is converted to a symbol.
    *
-   * For example you could execute svgo on the SVG markup.
+   * If you want to use SVGO, this is where you can do that.
    */
   processSvg?: (markup: string, filePath: string) => string | Promise<string>
 
   /**
    * Process each parsed symbol before it is added to the sprite.
    *
-   * For example you could execute svgo on the SVG markup.
+   * Use this to add, update or remove attributes.
+   * Return either the same Symbol object or directly the markup for the
+   * <symbol>. Note that at least the ID attribute must be present, else the
+   * symbol won't work!
    */
   processSymbol?: (
     symbol: Symbol,
     filePath: string,
   ) => Symbol | string | Promise<Symbol | string>
+
+  /**
+   * Process the finished sprite right before it's saved.
+   */
+  processSprite?: (markup: string, key: string) => string | Promise<string>
 }
 
 /**
@@ -81,10 +89,16 @@ export type ModuleOptions = {
   sprites: Record<string, SpriteConfig>
 }
 
+type SymbolProcessed = {
+  id: string
+  content: string
+  filePath: string
+}
+
 type SpriteContext = {
   content: string
   hash: string
-  icons: string[]
+  symbols: SymbolProcessed[]
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -124,7 +138,7 @@ export default defineNuxtModule<ModuleOptions>({
       acc[v] = {
         content: '',
         hash: '',
-        icons: [],
+        symbols: [],
       }
       return acc
     }, {})
@@ -157,7 +171,7 @@ export default defineNuxtModule<ModuleOptions>({
       }
 
       // Read files and add them to the spriter instance.
-      const symbols = await Promise.all(
+      const symbols: SymbolProcessed[] = await Promise.all(
         files.map((filePath) => {
           const id = path.parse(filePath).name
           return fs
@@ -179,7 +193,7 @@ export default defineNuxtModule<ModuleOptions>({
             })
             .then((result) => {
               if (typeof result === 'string') {
-                return { content: result, id }
+                return { content: result, id, filePath }
               }
 
               const attributes: string = Object.keys(result.attributes)
@@ -188,19 +202,24 @@ export default defineNuxtModule<ModuleOptions>({
                 })
                 .join(' ')
               const content = `<symbol ${attributes}>${result.content}</symbol>`
-              return { content, id }
+              return { content, id, filePath }
             })
         }),
       )
 
       // Compile sprite.
       try {
-        const content = `<svg xmlns="http://www.w3.org/2000/svg">\n  ${symbols
+        let content = `<svg xmlns="http://www.w3.org/2000/svg">\n  ${symbols
           .map((v) => v.content)
           .join('  \n')}\n</svg>`
+        if (spriteConfig.processSprite) {
+          content = await Promise.resolve(
+            spriteConfig.processSprite(content, name),
+          )
+        }
         context[name].content = content
         context[name].hash = hash(content)
-        context[name].icons = symbols.map((v) => v.id)
+        context[name].symbols = symbols
       } catch (e) {
         logger.error('Failed to generate SVG sprite.')
         logger.log(e)
@@ -229,7 +248,7 @@ export default defineNuxtModule<ModuleOptions>({
     // Template containing the types and the relative URL path to the generated
     // sprite.
     const template = addTemplate({
-      filename: 'nuxt-svg-sprite.ts',
+      filename: 'nuxt-svg-sprite/runtime.ts',
       write: true,
       options: {
         nuxtSvgSprite: true,
@@ -238,8 +257,8 @@ export default defineNuxtModule<ModuleOptions>({
         const type = spriteKeys
           .map((v) => {
             const prefix = v === 'default' ? '' : v + '/'
-            return context[v].icons.map((icon) => {
-              return prefix + icon
+            return context[v].symbols.map((symbol) => {
+              return prefix + symbol.id
             })
           })
           .flat()
@@ -273,7 +292,7 @@ export const SPRITE_PATHS = ${JSON.stringify(fileNames)}
     })
 
     const templateData = addTemplate({
-      filename: 'nuxt-svg-sprite-data.ts',
+      filename: 'nuxt-svg-sprite/data.ts',
       write: true,
       options: {
         nuxtSvgSprite: true,
@@ -282,17 +301,20 @@ export const SPRITE_PATHS = ${JSON.stringify(fileNames)}
         const allIcons = spriteKeys
           .map((v) => {
             const prefix = v === 'default' ? '' : v + '/'
-            return context[v].icons.map((icon) => {
-              return prefix + icon
+            return context[v].symbols.map((symbol) => {
+              return prefix + symbol.id
             })
           })
           .flat()
 
         return `
+import { NuxtSvgSpriteSymbol } from './runtime'
 /**
  * Keys of all generated SVG sprite symbols.
  */
-export const ALL_SYMBOL_KEYS = ${JSON.stringify(allIcons)}
+export const ALL_SYMBOL_KEYS: NuxtSvgSpriteSymbol[] = ${JSON.stringify(
+          allIcons,
+        )}
 `
       },
     })

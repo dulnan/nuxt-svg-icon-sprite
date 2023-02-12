@@ -10,8 +10,6 @@
       x="0"
       y="0"
       transform-origin="center"
-      class="transition-all"
-      style="transition-timing-function: linear; transition-duration: 500ms"
       :transform="getTransform(n)"
       :class="getClass(n)"
     />
@@ -19,13 +17,13 @@
 </template>
 
 <script lang="ts" setup>
-import { onUnmounted, ref } from 'vue'
-const TOTAL = 9
+import { onMounted, onUnmounted, ref } from 'vue'
+const TOTAL = 20
 
 const offset = ref(0)
 
 function getTransform(n: number) {
-  const v = (TOTAL - ((n + offset.value) % TOTAL)) / 5
+  const v = ((TOTAL - n - 1) / (TOTAL - 5)) % 1.75
   return `scale(${v})`
 }
 
@@ -39,16 +37,23 @@ const COLOR_CLASSES = [
 ]
 
 function getClass(n: number) {
-  const index = (n - 1 + offset.value) % COLOR_CLASSES.length
-  return COLOR_CLASSES[index]
+  return COLOR_CLASSES[n % COLOR_CLASSES.length]
 }
 
-const interval = setInterval(() => {
+let raf: any = null
+
+const loop = () => {
   offset.value = offset.value + 1
-}, 500)
+
+  raf = window.requestAnimationFrame(loop)
+}
 
 onUnmounted(() => {
-  clearInterval(interval)
+  window.cancelAnimationFrame(raf)
+})
+
+onMounted(() => {
+  loop()
 })
 </script>
 

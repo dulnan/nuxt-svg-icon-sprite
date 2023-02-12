@@ -1,9 +1,12 @@
 # Nuxt SVG Icon Sprite
 
-Module for Nuxt 3 to automatically create a **SVG `<symbol>` sprite**.
-Currently in a beta, open for feedback and breaking changes!
+Easy and performant way to use SVG icons in your Nuxt 3 app.
 
-- Aggregate all SVG files into a single sprite file
+Automatically creates [SVG `<symbol>`
+sprites](https://www.sitepoint.com/use-svg-image-sprites/) during build and
+provides components and composables to use symbols.
+
+- Aggregate all SVG files into a one or more sprite files
 - Reduce bundle size and SSR rendered page size
 - Full HMR support
 - Provides `<SpriteSymbol>` component to render `<svg>` with `<use>`
@@ -13,7 +16,7 @@ Currently in a beta, open for feedback and breaking changes!
 ## Install
 
 ```bash
-npm install --save nuxt-svg-icon-sprite@beta
+npm install --save nuxt-svg-icon-sprite
 ```
 
 ```typescript
@@ -29,11 +32,6 @@ export default defineNuxtConfig({
   },
 })
 ```
-
-Currently only a single sprite is generated, but support for multiple sprites
-will be implemented. The `svgIconSprite.sprites` config will contain keys for
-each sprite to be generated. The `default` key is the only one supported
-currently.
 
 ## Usage
 
@@ -60,12 +58,71 @@ This will render the following markup:
 
 The symbol is referenced from the sprite via URL.
 
+## Multiple Sprites
+
+If you have a lot of icons it might make sense to split them into separate
+sprites.
+
+A typical example would be to have SVGs that appear on every page (navbar,
+logo, footer, etc.) in the "default" sprite and put page-specific SVGs in
+separate sprites.
+
+To create an additional sprite just define a new property on the `sprites`
+config object:
+
+```typescript
+export default defineNuxtConfig({
+  modules: ['nuxt-svg-icon-sprite'],
+
+  svgIconSprite: {
+    sprites: {
+      default: {
+        importPatterns: ['./assets/icons/**/*.svg'],
+      },
+      dashboard: {
+        importPatterns: ['./assets/icons-dashboard/**/*.svg'],
+      },
+    },
+  },
+})
+```
+
+Assuming you have this file `~/assets/icons-dashboard/billing.svg`, you can
+reference it like this:
+
+```vue
+<SpriteSymbol name="dashboard/billing" />
+```
+
+The symbol name is prefixed by the name of the sprite (e.g. the key used in the
+`sprites` config). The `default` sprite is always unprefixed.
+
+## `<SpriteSymbol>` component
+
+In addition to the `name` prop you can also optionally pass the `noWrapper`
+prop to only render the `<use>` tag:
+
+```vue
+<SpriteSymbol name="dashboard/billing" :no-wrapper="true" />
+```
+
+This will render the following markup:
+
+```html
+<use xlink:href="/_nuxt/sprite-dashboard.svg#billing"></use>
+```
+
+This is useful if you want to render multiple symbols in one `<svg>` tag.
+
+## `useSpriteData()` composable
+
+Get information about the generated sprites and their symbols during runtime.
+
+Useful if you want to render a list of all 
+
 ## TODO
 
-- Support multiple sprites
-- Remove large dependency on svg-sprite
 - Provide more information about generated sprite via composable
 - Provide option to inline sprite in SSR
 - Docs
 - Tests
-- Separate component to only render `<use>` without `<svg>`
