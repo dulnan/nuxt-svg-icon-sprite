@@ -39,6 +39,8 @@ Place the icons in the folder defined in nuxt.config.ts, by default it's
 `./assets/icons`. The name of the SVG files is used to determine the symbol
 name.
 
+**NOTE: Per sprite each symbol must have an unique name!**
+
 So, if you have a file in `./assets/icons/user.svg` the sprite will contain a
 <symbol> with id `user`.
 

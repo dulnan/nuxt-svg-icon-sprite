@@ -101,6 +101,18 @@ type SpriteContext = {
   symbols: SymbolProcessed[]
 }
 
+function filterDuplicates() {
+  const checked: Record<string, boolean> = {}
+  return <T>(symbol: SymbolProcessed, index: number, self: Array<T>) => {
+    if (checked[symbol.id]) {
+      logger.error('Found duplicate symbol:', symbol)
+      return false
+    }
+    checked[symbol.id] = true
+    return true
+  }
+}
+
 export default defineNuxtModule<ModuleOptions>({
   meta: {
     name: 'nuxt-svg-icon-sprite',
@@ -205,7 +217,9 @@ export default defineNuxtModule<ModuleOptions>({
               return { content, id, filePath }
             })
         }),
-      )
+      ).then((symbols) => {
+        return symbols.filter(filterDuplicates())
+      })
 
       // Compile sprite.
       try {

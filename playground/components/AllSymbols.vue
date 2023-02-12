@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { Ref } from 'vue'
 import { useSpriteData } from '#imports'
-import { NuxtSvgSpriteSymbol } from '~~/.nuxt/nuxt-svg-sprite/runtime'
+import { NuxtSvgSpriteSymbol } from '#nuxt-svg-sprite/runtime'
 
 const { symbols } = useSpriteData()
 

@@ -20,11 +20,14 @@ export default defineComponent({
           '#' +
           (name || sprite),
       })
+
+      // Wrap <use> in <svg> if desired.
       return props.noWrapper ? use : h('svg', use)
     }
   },
 })
 
+// Don't have to do anything, just accept.
 if (import.meta.hot) {
   import.meta.hot.accept(() => {})
 }
