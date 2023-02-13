@@ -1,6 +1,6 @@
 {
   "name": "nuxt-svg-icon-sprite",
-  "version": "0.0.1-beta.0",
+  "version": "0.0.1-beta.1",
   "description": "Generate SVG symbol sprites for icons and illustrations.",
   "repository": {
     "type": "git",

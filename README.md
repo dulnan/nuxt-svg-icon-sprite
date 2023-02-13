@@ -42,7 +42,7 @@ name.
 **NOTE: Per sprite each symbol must have an unique name!**
 
 So, if you have a file in `./assets/icons/user.svg` the sprite will contain a
-<symbol> with id `user`.
+`<symbol>` with id `user`.
 
 You can now use the symbol using the provided component:
 
