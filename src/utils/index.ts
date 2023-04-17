@@ -67,6 +67,7 @@ export async function generateSprite(
   name: string,
   spriteConfig: SpriteConfig,
   srcDir: string,
+  debug = false,
 ): Promise<SpriteContext | undefined> {
   const files: { filePath: string; id: string }[] = []
 
@@ -131,7 +132,7 @@ export async function generateSprite(
               return `${attribute}="${result.attributes[attribute]}"`
             })
             .join(' ')
-          const content = `<symbol ${attributes}>${result.content}</symbol>`
+          const content = `<symbol ${attributes}>\n  ${result.content}\n</symbol>`
           return { content, id, filePath }
         })
         .catch((e) => {
@@ -146,9 +147,12 @@ export async function generateSprite(
 
   // Compile sprite.
   try {
-    let content = `<svg xmlns="http://www.w3.org/2000/svg">\n  ${symbols
-      .map((v) => v.content)
-      .join('  \n')}\n</svg>`
+    let content = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"><defs>\n${symbols
+      .map((v) => {
+        return debug ? `<!-- ${v.filePath} -->\n${v.content}\n\n` : v.content
+      })
+      .join('  \n')}\n</defs></svg>`
     if (spriteConfig.processSprite) {
       content = await Promise.resolve(spriteConfig.processSprite(content, name))
     }

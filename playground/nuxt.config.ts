@@ -4,6 +4,10 @@ import nuxtSvgIconSprite from './../src/module'
 export default defineNuxtConfig({
   modules: [nuxtSvgIconSprite],
 
+  routeRules: {
+    '/spa/**': { ssr: false },
+  },
+
   svgIconSprite: {
     sprites: {
       default: {

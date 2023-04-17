@@ -84,6 +84,7 @@ export default defineNuxtModule<ModuleOptions>({
             key,
             moduleOptions.sprites[key],
             srcDir,
+            DEV,
           )
         }),
       )

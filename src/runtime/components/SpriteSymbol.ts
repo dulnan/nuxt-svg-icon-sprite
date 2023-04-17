@@ -15,14 +15,22 @@ export default defineComponent({
 
       // Create the <use> tag.
       const use = h('use', {
-        'xlink:href':
+        href:
           (SPRITE_PATHS as any)[name ? sprite : 'default'] +
           '#' +
           (name || sprite),
       })
 
       // Wrap <use> in <svg> if desired.
-      return props.noWrapper ? use : h('svg', use)
+      return props.noWrapper
+        ? use
+        : h(
+            'svg',
+            {
+              xmlns: 'http://www.w3.org/2000/svg',
+            },
+            use,
+          )
     }
   },
 })
