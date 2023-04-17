@@ -1,4 +1,4 @@
-import { defineComponent, PropType } from 'vue'
+import { defineComponent, PropType, h } from 'vue'
 import type { NuxtSvgSpriteSymbol } from '#nuxt-svg-sprite/runtime'
 import { SPRITE_PATHS } from '#nuxt-svg-sprite/runtime'
 
