@@ -116,6 +116,8 @@ This will render the following markup:
 
 This is useful if you want to render multiple symbols in one `<svg>` tag.
 
+You may also use the `inline` prop on the `<SpriteSymbol />` component to render the SVG content directly instead of rendering the `<use>` tag.
+
 ## `useSpriteData()` composable
 
 Get information about the generated sprites and their symbols during runtime.
