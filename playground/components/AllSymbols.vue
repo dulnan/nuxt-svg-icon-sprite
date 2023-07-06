@@ -20,6 +20,17 @@
       class="text-green-600"
       fill="currentColor"
     />
+
+    <!-- Test inlining. -->
+    <SpriteSymbol
+      :name="current"
+      width="128"
+      height="128"
+      class="text-green-600"
+      fill="currentColor"
+      :inline="true"
+    />
+
     {{ current }}
   </div>
 </template>

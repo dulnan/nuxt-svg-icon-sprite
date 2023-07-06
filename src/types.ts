@@ -46,6 +46,8 @@ export type SpriteConfig = {
 export type SymbolProcessed = {
   id: string
   content: string
+  symbolDom: string
+  symbolAttributes: string
   filePath: string
 }
 

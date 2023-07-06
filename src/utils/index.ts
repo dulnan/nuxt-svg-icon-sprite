@@ -120,6 +120,7 @@ export async function generateSprite(
           if (spriteConfig.processSymbol) {
             return spriteConfig.processSymbol(symbol, filePath)
           }
+
           return symbol
         })
         .then((result) => {
@@ -133,7 +134,7 @@ export async function generateSprite(
             })
             .join(' ')
           const content = `<symbol ${attributes}>\n  ${result.content}\n</symbol>`
-          return { content, id, filePath }
+          return { content, id, filePath, symbolDom: result.content, symbolAttributes: result.attributes }
         })
         .catch((e) => {
           logger.error(e)
@@ -215,6 +216,7 @@ export const SPRITE_PATHS = ${JSON.stringify(fileNames)}
 }
 
 export function buildDataTemplate(context: ModuleContext) {
+
   const allIcons = Object.keys(context)
     .map((v) => {
       const prefix = v === 'default' ? '' : v + '/'
@@ -224,6 +226,18 @@ export function buildDataTemplate(context: ModuleContext) {
     })
     .flat()
 
+  const allSymbolDoms = Object.fromEntries(
+    Object.values(context)
+      .map((v) => {
+        return v?.symbols
+      })
+      .flat()
+      .map((v) => [v.id, {
+        dom: v.symbolDom,
+        attributes: v.symbolAttributes
+      }])
+  )
+
   return `
 import { NuxtSvgSpriteSymbol } from './runtime'
 /**
@@ -232,6 +246,11 @@ import { NuxtSvgSpriteSymbol } from './runtime'
 export const ALL_SYMBOL_KEYS: NuxtSvgSpriteSymbol[] = ${JSON.stringify(
     allIcons,
   )}
+
+/**
+ * DOM of all symbols by key.
+ */
+export const ALL_SYMBOL_DOMS: Record<NuxtSvgSpriteSymbol, { dom: string, attributes: { [key: string]: string } }> = ${JSON.stringify(allSymbolDoms)}
 `
 }
 
