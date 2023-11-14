@@ -134,7 +134,13 @@ export async function generateSprite(
             })
             .join(' ')
           const content = `<symbol ${attributes}>\n  ${result.content}\n</symbol>`
-          return { content, id, filePath, symbolDom: result.content, symbolAttributes: result.attributes }
+          return {
+            content,
+            id,
+            filePath,
+            symbolDom: result.content,
+            symbolAttributes: result.attributes,
+          }
         })
         .catch((e) => {
           logger.error(e)
@@ -216,7 +222,6 @@ export const SPRITE_PATHS = ${JSON.stringify(fileNames)}
 }
 
 export function buildDataTemplate(context: ModuleContext) {
-
   const allIcons = Object.keys(context)
     .map((v) => {
       const prefix = v === 'default' ? '' : v + '/'
@@ -232,10 +237,21 @@ export function buildDataTemplate(context: ModuleContext) {
         return v?.symbols
       })
       .flat()
-      .map((v) => [v.id, {
-        dom: v.symbolDom,
-        attributes: v.symbolAttributes
-      }])
+      .map((v) => [
+        v.id,
+        {
+          dom: v.symbolDom,
+          attributes: v.symbolAttributes,
+        },
+      ]),
+  )
+
+  const allSprites = Object.entries(context).reduce<Record<string, string>>(
+    (acc, [key, value]) => {
+      acc[key] = value?.content || ''
+      return acc
+    },
+    {},
   )
 
   return `
@@ -250,7 +266,15 @@ export const ALL_SYMBOL_KEYS: NuxtSvgSpriteSymbol[] = ${JSON.stringify(
 /**
  * DOM of all symbols by key.
  */
-export const ALL_SYMBOL_DOMS: Record<NuxtSvgSpriteSymbol, { dom: string, attributes: { [key: string]: string } }> = ${JSON.stringify(allSymbolDoms)}
+export const ALL_SYMBOL_DOMS: Record<NuxtSvgSpriteSymbol, { dom: string, attributes: { [key: string]: string } }> = ${JSON.stringify(
+    allSymbolDoms,
+  )}
+
+/**
+ * Markup of all sprites.
+ */
+export const ALL_SPRITES: Record<string, string> = ${JSON.stringify(allSprites)}
+
 `
 }
 
