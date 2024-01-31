@@ -6,13 +6,14 @@ import {
   addComponent,
   addImportsDir,
 } from '@nuxt/kit'
-import { SpriteConfig, ModuleContext } from './types'
+import type { SpriteConfig, ModuleContext } from './types'
 import {
   buildRuntimeTemplate,
   buildDataTemplate,
   generateSprite,
   getSpriteFileName,
   getAllHashes,
+  buildSymbolImportTemplate,
 } from './utils'
 
 /**
@@ -32,18 +33,16 @@ export default defineNuxtModule<ModuleOptions>({
     name: 'nuxt-svg-icon-sprite',
     configKey: 'svgIconSprite',
     compatibility: {
-      nuxt: '^3.0.0',
-    },
-  },
-  defaults: {
-    sprites: {
-      default: {
-        importPatterns: ['./assets/icons/*.svg'],
-      },
+      nuxt: '^3.9.0',
     },
   },
   async setup(moduleOptions, nuxt) {
     const DEV = nuxt.options.dev
+    if (!moduleOptions.sprites.default) {
+      moduleOptions.sprites.default = {
+        importPatterns: ['./assets/symbols/*.svg'],
+      }
+    }
 
     // The path to the source directory of this module's consumer.
     const srcDir = nuxt.options.srcDir
@@ -134,11 +133,24 @@ export default defineNuxtModule<ModuleOptions>({
       },
     })
 
+    const templateSymbolImport = addTemplate({
+      filename: 'nuxt-svg-sprite/symbol-imports.ts',
+      write: true,
+      options: {
+        nuxtSvgSprite: true,
+      },
+      getContents: () => {
+        return buildSymbolImportTemplate(context)
+      },
+    })
+
     // Add an alias for the generated template. This is used inside the
     // SpriteSymbol component to type the props and to get the URL to the
     // sprite.
     nuxt.options.alias['#nuxt-svg-sprite/runtime'] = template.dst
     nuxt.options.alias['#nuxt-svg-sprite/data'] = templateData.dst
+    nuxt.options.alias['#nuxt-svg-sprite/symbol-import'] =
+      templateSymbolImport.dst
 
     if (DEV) {
       nuxt.hook('vite:serverCreated', (viteServer) => {

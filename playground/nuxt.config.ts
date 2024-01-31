@@ -1,8 +1,13 @@
-import { defineNuxtConfig } from 'nuxt/config'
-import nuxtSvgIconSprite from './../src/module'
+import path from 'path'
+
+const importPattern = path.resolve(__dirname, './assets/symbols') + '/**/*.svg'
 
 export default defineNuxtConfig({
-  modules: [nuxtSvgIconSprite],
+  modules: ['./../src/module'],
+
+  imports: {
+    autoImport: false,
+  },
 
   routeRules: {
     '/spa/**': { ssr: false },
@@ -11,13 +16,9 @@ export default defineNuxtConfig({
   svgIconSprite: {
     sprites: {
       default: {
-        importPatterns: [
-          './assets/symbols/**/*.svg',
-          './asdfasdfasdf/**/*.svg',
-        ],
-        symbols: {
+        importPatterns: [importPattern],
+        symbolFiles: {
           email: '~/assets/email.svg',
-          foobar: '~/assets/emailfoobar.svg',
         },
       },
       special: {

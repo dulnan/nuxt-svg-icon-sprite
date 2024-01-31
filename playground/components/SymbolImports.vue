@@ -7,31 +7,10 @@
         class="p-4 border"
         @click="current = symbol"
       >
-        <SpriteSymbol :name="symbol" width="128" height="128" />
+        <SpriteSymbol :name="symbol" width="128" height="128" inline />
         <figcaption class="text-center font-semibold">{{ symbol }}</figcaption>
       </figure>
     </div>
-
-    <!-- Test reactivity. -->
-    <SpriteSymbol
-      :name="current"
-      width="128"
-      height="128"
-      class="text-green-600"
-      fill="currentColor"
-    />
-
-    <!-- Test inlining. -->
-    <SpriteSymbol
-      :name="current"
-      width="128"
-      height="128"
-      class="text-green-600"
-      fill="currentColor"
-      :inline="true"
-    />
-
-    {{ current }}
   </div>
 </template>
 

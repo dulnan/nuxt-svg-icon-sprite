@@ -47,7 +47,7 @@ export type SymbolProcessed = {
   id: string
   content: string
   symbolDom: string
-  symbolAttributes: string
+  symbolAttributes: Record<string, string>
   filePath: string
 }
 

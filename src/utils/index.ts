@@ -2,7 +2,7 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import { hash } from 'ohash'
 import { useLogger, resolveFiles, resolvePath } from '@nuxt/kit'
-import {
+import type {
   Symbol,
   SymbolProcessed,
   SpriteConfig,
@@ -234,14 +234,20 @@ export function buildDataTemplate(context: ModuleContext) {
   const allSymbolDoms = Object.fromEntries(
     Object.values(context)
       .map((v) => {
-        return v?.symbols
+        if (v?.symbols) {
+          return v.symbols.map((symbol) => {
+            return { symbol, spriteId: v.name }
+          })
+        }
+        return null
       })
       .flat()
+      .filter(falsy)
       .map((v) => [
-        v.id,
+        v.spriteId === 'default' ? v.symbol.id : `${v.spriteId}/${v.symbol.id}`,
         {
-          dom: v.symbolDom,
-          attributes: v.symbolAttributes,
+          dom: v.symbol.symbolDom,
+          attributes: v.symbol.symbolAttributes,
         },
       ]),
   )
@@ -255,7 +261,7 @@ export function buildDataTemplate(context: ModuleContext) {
   )
 
   return `
-import { NuxtSvgSpriteSymbol } from './runtime'
+import type { NuxtSvgSpriteSymbol } from './runtime'
 /**
  * Keys of all generated SVG sprite symbols.
  */
@@ -276,6 +282,42 @@ export const ALL_SYMBOL_DOMS: Record<NuxtSvgSpriteSymbol, { dom: string, attribu
 export const ALL_SPRITES: Record<string, string> = ${JSON.stringify(allSprites)}
 
 `
+}
+
+export function buildSymbolImportTemplate(context: ModuleContext) {
+  const imports = Object.values(context)
+    .map((v) => {
+      if (v?.symbols) {
+        return v.symbols.map((symbol) => {
+          return { symbol, spriteId: v.name }
+        })
+      }
+      return null
+    })
+    .flat()
+    .filter(falsy)
+    .map((v) => {
+      const id =
+        v.spriteId === 'default' ? v.symbol.id : `${v.spriteId}/${v.symbol.id}`
+
+      return `'${id}': { import: () => import('${
+        v.symbol.filePath
+      }?raw').then(v => v.default), attributes: ${JSON.stringify(
+        v.symbol.symbolAttributes,
+      )} },`
+    })
+    .join('\n  ')
+
+  return `
+import type { NuxtSvgSpriteSymbol } from './runtime'
+type SymbolImport = {
+  import: () => Promise<string>
+  attributes: Record<string, string>
+}
+export const SYMBOL_IMPORTS: Record<NuxtSvgSpriteSymbol, SymbolImport> = {
+${imports}
+}
+  `
 }
 
 export function getAllHashes(context: ModuleContext) {

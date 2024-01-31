@@ -1,62 +1,92 @@
-import { defineComponent, PropType, h, createVNode, Static } from 'vue'
+import { defineComponent, type PropType, h } from 'vue'
 import type { NuxtSvgSpriteSymbol } from '#nuxt-svg-sprite/runtime'
 import { SPRITE_PATHS } from '#nuxt-svg-sprite/runtime'
-import { ALL_SYMBOL_DOMS } from '#nuxt-svg-sprite/data'
+import { SYMBOL_IMPORTS } from '#nuxt-svg-sprite/symbol-import'
 
+/**
+ * Renders a <svg> tag containing <use> that references the given symbol from the sprite.
+ */
 export default defineComponent({
   props: {
-    name: String as PropType<NuxtSvgSpriteSymbol>,
-    noWrapper: Boolean,
+    /**
+     * The name of the symbol.
+     *
+     * Symbols from the default sprite can be referenced directly by their name,
+     * e.g. `name="settings"`.
+     * Symbols from other sprites must be prefixed by their sprite name, e.g.
+     * `name="special/search"`
+     */
+    name: {
+      type: String as PropType<NuxtSvgSpriteSymbol>,
+      required: true,
+    },
+
+    /**
+     * If set, the markup of the SVG is directly inlined, with both the
+     * attributes of the SVG and the attributes passed to the component.
+     *
+     * When set to true, the noWrapper prop is ignored.
+     */
     inline: Boolean,
+
+    /**
+     * If set, the component does not render a <svg> wrapper.
+     *
+     * If inline is set to `true`, this prop is ignored.
+     */
+    noWrapper: Boolean,
   },
-  setup(props) {
-    return () => {
-      // Split the name, which is either the symbol name of the default sprite
-      // (e.g. "user") or prefixed to a custom sprite ("dashboard/billing").
-      const [sprite, name] = (props.name || '').split('/')
+  async setup(props) {
+    // Split the name, which is either the symbol name of the default sprite
+    // (e.g. "user") or prefixed to a custom sprite ("dashboard/billing").
+    const [sprite, name] = (props.name || '').split('/')
 
-      const symbolKey = (name || sprite)
+    // The SVG markup should be inlined.
+    if (props.inline) {
+      const symbolImport = SYMBOL_IMPORTS[props.name]
+      if (symbolImport) {
+        const data = await symbolImport.import()
 
-      if (props.inline) {
-        if (props.noWrapper) {
-          return createVNode(Static, {}, ALL_SYMBOL_DOMS[symbolKey]?.dom)
-        }
+        const attributes = symbolImport.attributes
+        // Overwrite ID in case it's set to avoid setting duplicate IDs on the same page.
+        attributes.id = ''
 
-        const attributes = ALL_SYMBOL_DOMS[symbolKey]?.attributes || {}
-        attributes.id = null // Overwrite ID in case it's set to avoid setting duplicate IDs on the same page.
+        // Extract the contents of the SVG (everything between <svg> and </svg>)
+        const svgDom = data.match(/<svg[^>]*>((.|[\r\n])*?)<\/svg>/im)?.[1]
 
-        return h(
-          'svg',
-          {
+        return () =>
+          h('svg', {
             xmlns: 'http://www.w3.org/2000/svg',
-            'data-symbol': (name || sprite),
+            'data-symbol': name || sprite,
+            // Pass the attributes from the raw SVG (thinks like viewBox).
+            // Attributes passed to <SpriteSymbol> are automatically added by Vue.
             ...attributes,
-            innerHTML: ALL_SYMBOL_DOMS[symbolKey]?.dom,
+            innerHTML: svgDom,
             id: null,
-          }
-        )
+          })
       }
+    }
 
-      // Create the <use> tag.
-      const symbolDom = h('use', {
-        href:
-          (SPRITE_PATHS as any)[name ? sprite : 'default'] +
-          '#' +
-          (name || sprite),
-      })
+    // Create the <use> tag.
+    const symbolDom = h('use', {
+      href:
+        (SPRITE_PATHS as any)[name ? sprite : 'default'] +
+        '#' +
+        (name || sprite),
+    })
 
-      // Wrap DOM in <svg> if desired.
-      return props.noWrapper
+    // Wrap DOM in <svg> if desired.
+    return () =>
+      props.noWrapper
         ? symbolDom
         : h(
             'svg',
             {
               xmlns: 'http://www.w3.org/2000/svg',
-              'data-symbol': (name || sprite),
+              'data-symbol': name || sprite,
             },
             symbolDom,
           )
-    }
   },
 })
 
