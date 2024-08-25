@@ -134,7 +134,7 @@ export default defineNuxtModule<ModuleOptions>({
     })
 
     const templateSymbolImport = addTemplate({
-      filename: 'nuxt-svg-sprite/symbol-imports.ts',
+      filename: 'nuxt-svg-sprite/symbol-import.ts',
       write: true,
       options: {
         nuxtSvgSprite: true,
