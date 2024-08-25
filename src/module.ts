@@ -6,7 +6,7 @@ import {
   addComponent,
   addImportsDir,
 } from '@nuxt/kit'
-import type { SpriteConfig, ModuleContext } from './types'
+import type { SpriteConfig, ModuleContext, RuntimeOptions } from './types'
 import {
   buildRuntimeTemplate,
   buildDataTemplate,
@@ -26,6 +26,11 @@ export type ModuleOptions = {
    * If a sprite with name `default` is provided the names won't be prefixed.
    */
   sprites: Record<string, SpriteConfig>
+
+  /**
+   * Adds aria-hidden="true" to all rendered SVGs.
+   */
+  ariaHidden?: boolean
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -109,6 +114,10 @@ export default defineNuxtModule<ModuleOptions>({
       })
     })
 
+    const runtimeOptions: RuntimeOptions = {
+      ariaHidden: !!moduleOptions.ariaHidden,
+    }
+
     // Template containing the types and the relative URL path to the generated
     // sprite.
     const template = addTemplate({
@@ -118,7 +127,7 @@ export default defineNuxtModule<ModuleOptions>({
         nuxtSvgSprite: true,
       },
       getContents: () => {
-        return buildRuntimeTemplate(context, DEV)
+        return buildRuntimeTemplate(context, DEV, runtimeOptions)
       },
     })
 

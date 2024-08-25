@@ -59,3 +59,7 @@ export type SpriteContext = {
 }
 
 export type ModuleContext = Record<string, SpriteContext | undefined>
+
+export type RuntimeOptions = {
+  ariaHidden: boolean
+}

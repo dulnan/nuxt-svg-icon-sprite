@@ -1,6 +1,6 @@
 import { defineComponent, type PropType, h } from 'vue'
 import type { NuxtSvgSpriteSymbol } from '#nuxt-svg-sprite/runtime'
-import { SPRITE_PATHS } from '#nuxt-svg-sprite/runtime'
+import { SPRITE_PATHS, runtimeOptions } from '#nuxt-svg-sprite/runtime'
 import { SYMBOL_IMPORTS } from '#nuxt-svg-sprite/symbol-import'
 
 /**
@@ -63,6 +63,7 @@ export default defineComponent({
             ...attributes,
             innerHTML: svgDom,
             id: null,
+            'aria-hidden': runtimeOptions.ariaHidden ? 'true' : undefined,
           })
       }
     }
@@ -84,6 +85,7 @@ export default defineComponent({
             {
               xmlns: 'http://www.w3.org/2000/svg',
               'data-symbol': name || sprite,
+              'aria-hidden': runtimeOptions.ariaHidden ? 'true' : undefined,
             },
             symbolDom,
           )

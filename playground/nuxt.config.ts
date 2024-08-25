@@ -25,13 +25,17 @@ export default defineNuxtConfig({
         importPatterns: ['./assets/symbols-special/**/*.svg'],
       },
     },
+    ariaHidden: true,
   },
 
   css: ['~/assets/css/main.css'],
+
   postcss: {
     plugins: {
       tailwindcss: {},
       autoprefixer: {},
     },
   },
+
+  compatibilityDate: '2024-08-25',
 })

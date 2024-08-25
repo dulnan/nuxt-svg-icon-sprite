@@ -8,6 +8,7 @@ import type {
   SpriteConfig,
   SpriteContext,
   ModuleContext,
+  RuntimeOptions,
 } from '../types'
 
 /**
@@ -181,7 +182,11 @@ export function getSpriteFileName(
   return isDev ? `sprite-${name}.svg` : `sprite-${name}.${hash}.svg`
 }
 
-export function buildRuntimeTemplate(context: ModuleContext, isDev: boolean) {
+export function buildRuntimeTemplate(
+  context: ModuleContext,
+  isDev: boolean,
+  options: RuntimeOptions,
+) {
   const spriteKeys = Object.keys(context)
   const type = spriteKeys
     .map((v) => {
@@ -218,6 +223,12 @@ export type NuxtSvgSpriteSymbol =
   | ${type}
 
 export const SPRITE_PATHS = ${JSON.stringify(fileNames)}
+
+export type RuntimeOptions = {
+  ariaHidden: boolean
+}
+
+export const runtimeOptions: RuntimeOptions = ${JSON.stringify(options)}
 `
 }
 
