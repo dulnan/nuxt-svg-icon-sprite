@@ -15,16 +15,8 @@
   </svg>
 </template>
 
-<script lang="ts"></script>
 <script setup lang="ts">
-import {
-  defineComponent,
-  type PropType,
-  h,
-  computed,
-  watchEffect,
-  reactive,
-} from 'vue'
+import { type PropType, computed, watch, reactive } from 'vue'
 import { SYMBOL_IMPORTS } from '#nuxt-svg-sprite/symbol-import'
 import type { NuxtSvgSpriteSymbol } from '#nuxt-svg-sprite/runtime'
 import { SPRITE_PATHS, runtimeOptions } from '#nuxt-svg-sprite/runtime'
@@ -59,10 +51,6 @@ const props = defineProps({
   noWrapper: Boolean,
 })
 
-const inlineProps = reactive({
-  attrs: {},
-  svgDom: '',
-})
 const nameParts = computed(() => (props.name || '').split('/'))
 const nameOrSprite = computed(() => nameParts.value[nameParts.value.length - 1])
 const href = computed(() => {
@@ -73,7 +61,15 @@ const href = computed(() => {
   return sprite + '#' + nameOrSprite.value
 })
 
-watchEffect(async () => {
+const inlineProps = reactive({
+  attrs: {},
+  svgDom: '',
+})
+
+const buildInlineProps = async () => {
+  if (!props.inline) {
+    return
+  }
   const symbolImport = SYMBOL_IMPORTS[props.name]
   if (!symbolImport) {
     return
@@ -94,5 +90,15 @@ watchEffect(async () => {
     id: null,
     'aria-hidden': runtimeOptions.ariaHidden ? 'true' : undefined,
   }
-})
+}
+
+// Awaiting the buildInlineProps function breaks the module when more than ~50 symbols are imported
+// So just call it directly
+watch(
+  () => props.name,
+  () => {
+    buildInlineProps()
+  },
+  { immediate: true },
+)
 </script>
