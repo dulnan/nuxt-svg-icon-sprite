@@ -13,6 +13,14 @@ export default defineNuxtConfig({
     '/spa/**': { ssr: false },
   },
 
+  vite: {
+    server: {
+      watch: {
+        usePolling: true,
+      },
+    },
+  },
+
   svgIconSprite: {
     sprites: {
       default: {
