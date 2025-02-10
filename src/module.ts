@@ -102,7 +102,8 @@ export default defineNuxtModule<ModuleOptions>({
       // Add the template for the SVG sprite.
       addTemplate({
         filename:
-          'dist/client/_nuxt/' +
+          'dist/client' +
+          nuxt.options.app.buildAssetsDir +
           getSpriteFileName(key, context[key]?.hash, DEV),
         write: true,
         options: {
@@ -127,7 +128,12 @@ export default defineNuxtModule<ModuleOptions>({
         nuxtSvgSprite: true,
       },
       getContents: () => {
-        return buildRuntimeTemplate(context, DEV, runtimeOptions)
+        return buildRuntimeTemplate(
+          context,
+          DEV,
+          runtimeOptions,
+          nuxt.options.app.buildAssetsDir,
+        )
       },
     })
 

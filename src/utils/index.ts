@@ -186,6 +186,7 @@ export function buildRuntimeTemplate(
   context: ModuleContext,
   isDev: boolean,
   options: RuntimeOptions,
+  path: string,
 ) {
   const spriteKeys = Object.keys(context)
   const type = spriteKeys
@@ -210,7 +211,7 @@ export function buildRuntimeTemplate(
       if (isDev) {
         name += '?t=' + Date.now()
       }
-      acc[key] = '/_nuxt/' + name
+      acc[key] = path + name
     }
     return acc
   }, {})
