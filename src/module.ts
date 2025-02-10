@@ -41,6 +41,10 @@ export default defineNuxtModule<ModuleOptions>({
       nuxt: '^3.9.0',
     },
   },
+  defaults: {
+    sprites: {},
+    ariaHidden: false,
+  },
   async setup(moduleOptions, nuxt) {
     const DEV = nuxt.options.dev
     if (!moduleOptions.sprites.default) {
