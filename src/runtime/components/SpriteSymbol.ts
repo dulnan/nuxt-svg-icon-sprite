@@ -3,6 +3,39 @@ import type { NuxtSvgSpriteSymbol } from '#nuxt-svg-sprite/runtime'
 import { SPRITE_PATHS, runtimeOptions } from '#nuxt-svg-sprite/runtime'
 import { SYMBOL_IMPORTS } from '#nuxt-svg-sprite/symbol-import'
 
+const SymbolInline = defineComponent({
+  props: {
+    name: {
+      type: String as PropType<NuxtSvgSpriteSymbol>,
+      required: true,
+    },
+  },
+  async setup(props) {
+    const symbolImport = SYMBOL_IMPORTS[props.name]
+    if (!symbolImport) {
+      return ''
+    }
+
+    const data = await symbolImport.import()
+
+    // Extract the contents of the SVG (everything between <svg> and </svg>)
+    const innerHTML = data.match(/<svg[^>]*>((.|[\r\n])*?)<\/svg>/im)?.[1] || ''
+
+    const [sprite, name] = (props.name || '').split('/')
+    return () =>
+      h('svg', {
+        xmlns: 'http://www.w3.org/2000/svg',
+        'data-symbol': name || sprite,
+        // Pass the attributes from the raw SVG (things like viewBox).
+        // Attributes passed to <SpriteSymbol> are automatically added by Vue.
+        ...symbolImport.attributes,
+        innerHTML,
+        id: null,
+        'aria-hidden': runtimeOptions.ariaHidden ? 'true' : undefined,
+      })
+  },
+})
+
 /**
  * Renders a <svg> tag containing <use> that references the given symbol from the sprite.
  */
@@ -36,49 +69,25 @@ export default defineComponent({
      */
     noWrapper: Boolean,
   },
-  async setup(props) {
-    // Split the name, which is either the symbol name of the default sprite
-    // (e.g. "user") or prefixed to a custom sprite ("dashboard/billing").
-    const [sprite, name] = (props.name || '').split('/')
-
-    // The SVG markup should be inlined.
-    if (props.inline) {
-      const symbolImport = SYMBOL_IMPORTS[props.name]
-      if (symbolImport) {
-        const data = await symbolImport.import()
-
-        const attributes = symbolImport.attributes
-        // Overwrite ID in case it's set to avoid setting duplicate IDs on the same page.
-        attributes.id = ''
-
-        // Extract the contents of the SVG (everything between <svg> and </svg>)
-        const svgDom = data.match(/<svg[^>]*>((.|[\r\n])*?)<\/svg>/im)?.[1]
-
-        return () =>
-          h('svg', {
-            xmlns: 'http://www.w3.org/2000/svg',
-            'data-symbol': name || sprite,
-            // Pass the attributes from the raw SVG (thinks like viewBox).
-            // Attributes passed to <SpriteSymbol> are automatically added by Vue.
-            ...attributes,
-            innerHTML: svgDom,
-            id: null,
-            'aria-hidden': runtimeOptions.ariaHidden ? 'true' : undefined,
-          })
+  setup(props) {
+    return () => {
+      if (props.inline) {
+        return h(SymbolInline, { name: props.name, key: props.name })
       }
-    }
 
-    // Create the <use> tag.
-    const symbolDom = h('use', {
-      href:
-        (SPRITE_PATHS as any)[name ? sprite : 'default'] +
-        '#' +
-        (name || sprite),
-    })
+      // Split the name, which is either the symbol name of the default sprite
+      // (e.g. "user") or prefixed to a custom sprite ("dashboard/billing").
+      const [sprite, name] = (props.name || '').split('/')
 
-    // Wrap DOM in <svg> if desired.
-    return () =>
-      props.noWrapper
+      // Create the <use> tag.
+      const symbolDom = h('use', {
+        href:
+          (SPRITE_PATHS as any)[name ? sprite : 'default'] +
+          '#' +
+          (name || sprite),
+      })
+
+      return props.noWrapper
         ? symbolDom
         : h(
             'svg',
@@ -89,6 +98,7 @@ export default defineComponent({
             },
             symbolDom,
           )
+    }
   },
 })
 
