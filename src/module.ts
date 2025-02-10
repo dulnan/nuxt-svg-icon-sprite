@@ -53,6 +53,8 @@ export default defineNuxtModule<ModuleOptions>({
       }
     }
 
+    const buildResolver = createResolver(nuxt.options.buildDir)
+
     // The path to the source directory of this module's consumer.
     const srcDir = nuxt.options.srcDir
 
@@ -66,7 +68,7 @@ export default defineNuxtModule<ModuleOptions>({
     addImportsDir(resolver.resolve('runtime/composables'))
 
     // Add the component.
-    await addComponent({
+    addComponent({
       filePath: resolver.resolve('./runtime/components/SpriteSymbol'),
       name: 'SpriteSymbol',
       global: true,
@@ -159,7 +161,7 @@ export default defineNuxtModule<ModuleOptions>({
         nuxtSvgSprite: true,
       },
       getContents: () => {
-        return buildSymbolImportTemplate(context)
+        return buildSymbolImportTemplate(context, buildResolver)
       },
     })
 
