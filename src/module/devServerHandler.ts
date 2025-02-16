@@ -4,9 +4,9 @@ import {
   setResponseHeader,
   getRequestURL,
 } from 'h3'
-import type { SymbolCollector } from './SymbolCollector'
+import type { Collector } from './Collector'
 
-export function createDevServerHandler(collector: SymbolCollector) {
+export function createDevServerHandler(collector: Collector) {
   return defineEventHandler(async (event) => {
     defaultContentType(event, 'image/svg+xml')
     setResponseHeader(event, 'Cache-Control', 'max-age=99999999')

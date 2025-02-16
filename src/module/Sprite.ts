@@ -1,8 +1,8 @@
 import { hash } from 'ohash'
 import { resolveFiles, resolvePath } from '@nuxt/kit'
-import { logger } from '../utils'
+import { falsy, logger } from '../utils'
 import type { ModuleContext, SpriteConfig } from '../types'
-import { SpriteSymbol } from './SpriteSymbol'
+import { SpriteSymbol, type SpriteSymbolProcessed } from './SpriteSymbol'
 
 export class Sprite {
   /**
@@ -23,7 +23,7 @@ export class Sprite {
   /**
    * The symbols beloning to the sprite.
    */
-  symbols: SpriteSymbol[] = []
+  private symbols: SpriteSymbol[] = []
 
   /**
    * The cached generated sprite markup.
@@ -59,6 +59,27 @@ export class Sprite {
     return Promise.resolve([])
   }
 
+  getPrefix() {
+    return this.name === 'default' ? '' : this.name + '/'
+  }
+
+  getProcessedSymbols(): Promise<
+    { symbol: SpriteSymbol; processed: SpriteSymbolProcessed }[]
+  > {
+    return Promise.all(
+      this.symbols.map(async (symbol) => {
+        const processed = await symbol.getProcessed()
+        if (processed) {
+          return {
+            symbol,
+            processed,
+          }
+        }
+        return null
+      }),
+    ).then((processed) => processed.filter(falsy))
+  }
+
   /**
    * Initialise the sprite with all symbols in the configured import patterns.
    */
@@ -89,7 +110,7 @@ export class Sprite {
     if (!this.generatedSprite) {
       const symbols = await Promise.all(
         this.symbols.map((symbol) => symbol.getProcessed()),
-      ).then((processed) => processed.map((v) => v.spriteContent))
+      ).then((processed) => processed.filter(falsy).map((v) => v.spriteContent))
 
       // @TODO: filterDuplicates
       let content = `<?xml version="1.0" encoding="UTF-8"?>

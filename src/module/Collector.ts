@@ -1,9 +1,8 @@
-import { relative } from 'pathe'
 import { falsy } from '../utils'
 import type { ModuleContext, SpriteConfig } from '../types'
 import { Sprite } from './Sprite'
 
-export class SymbolCollector {
+export class Collector {
   sprites: Sprite[]
   context: ModuleContext
 
@@ -30,7 +29,7 @@ export class SymbolCollector {
         fileNames[sprite.name] = `/_nuxt/nuxt-svg-sprite/${sprite.name}/${hash}`
       } else {
         fileNames[sprite.name] =
-          this.context.buildAssetDir + sprite.getSpriteFileName()
+          this.context.buildAssetDir + (await sprite.getSpriteFileName())
       }
     }
 
@@ -40,19 +39,18 @@ export const runtimeOptions = ${JSON.stringify(this.context.runtimeOptions)}
 `
   }
 
-  getRuntimeTypeTemplate() {
-    const type = this.sprites
-      .map((sprite) => {
-        const prefix = sprite.name === 'default' ? '' : sprite.name + '/'
-        return sprite.symbols.map((symbol) => {
-          return prefix + symbol.id
-        })
-      })
-      .flat()
-      .map((v) => {
-        return `'${v}'`
-      })
-      .join('\n  | ')
+  async getRuntimeTypeTemplate() {
+    const types: string[] = []
+
+    for (const sprite of this.sprites) {
+      const prefix = sprite.name === 'default' ? '' : sprite.name + '/'
+      const processed = await sprite.getProcessedSymbols()
+      for (const v of processed) {
+        types.push(JSON.stringify(prefix + v.symbol.id))
+      }
+    }
+
+    const NuxtSvgSpriteSymbol = types.join('  |\n') || 'never'
 
     return `
 declare module '#nuxt-svg-sprite/runtime' {
@@ -60,7 +58,7 @@ declare module '#nuxt-svg-sprite/runtime' {
    * Keys of all generated SVG sprite symbols.
    */
   export type NuxtSvgSpriteSymbol =
-    | ${type || 'never'}
+    | ${NuxtSvgSpriteSymbol}
 
   export type RuntimeOptions = {
     ariaHidden: boolean
@@ -72,40 +70,28 @@ declare module '#nuxt-svg-sprite/runtime' {
   }
 
   async buildDataTemplate() {
-    const allIcons = this.sprites
-      .map((sprite) => {
-        const prefix = sprite.name === 'default' ? '' : sprite.name + '/'
-        return sprite.symbols.map((symbol) => {
-          return prefix + symbol.id
-        })
-      })
-      .flat()
+    const allIcons: string[] = []
+    const allSymbolDoms: [
+      string,
+      { dom: string; attributes: Record<string, string> },
+    ][] = []
 
-    const allSymbolDoms = await Promise.all(
-      this.sprites
-        .map((sprite) => {
-          if (sprite.symbols.length) {
-            return sprite.symbols.map((symbol) => {
-              return { symbol, spriteId: sprite.name }
-            })
-          }
-          return null
-        })
-        .flat()
-        .filter(falsy)
-        .map(async (v) => {
-          const processed = await v.symbol.getProcessed()
-          return [
-            v.spriteId === 'default'
-              ? v.symbol.id
-              : `${v.spriteId}/${v.symbol.id}`,
-            {
-              dom: processed.symbolDom,
-              attributes: processed.attributes,
-            },
-          ]
-        }),
-    )
+    for (const sprite of this.sprites) {
+      const processedSymbols = await sprite.getProcessedSymbols()
+
+      processedSymbols.forEach((v) => {
+        const idWithPrefix = sprite.getPrefix() + v.symbol.id
+        allIcons.push(idWithPrefix)
+
+        allSymbolDoms.push([
+          idWithPrefix,
+          {
+            dom: v.processed.symbolDom,
+            attributes: v.processed.attributes,
+          },
+        ])
+      })
+    }
 
     const allSprites: Record<string, string> = {}
 
@@ -128,9 +114,9 @@ export const ALL_SPRITES = ${JSON.stringify(allSprites, null, 2)}
   }
 
   buildDataTypeTemplate() {
-    return `import type { NuxtSvgSpriteSymbol } from './runtime'
+    return `declare module '#nuxt-svg-sprite/data' {
+  import type { NuxtSvgSpriteSymbol } from './runtime'
 
-declare module '#nuxt-svg-sprite/data' {
   export const ALL_SYMBOL_KEYS: NuxtSvgSpriteSymbol[]
   export const ALL_SYMBOL_DOMS: Record<NuxtSvgSpriteSymbol, { dom: string, attributes: { [key: string]: string } }>
   export const ALL_SPRITES: Record<string, string>
@@ -138,41 +124,33 @@ declare module '#nuxt-svg-sprite/data' {
   }
 
   async buildSymbolImportTemplate() {
-    const buildPath = this.context.buildResolver.resolve('./nuxt-svg-sprite')
+    const imports: string[] = []
 
-    const imports = await Promise.all(
-      this.sprites
-        .map((sprite) => {
-          if (sprite.symbols.length) {
-            return sprite.symbols.map((symbol) => {
-              return { symbol, spriteId: sprite.name }
-            })
-          }
-          return null
-        })
-        .flat()
-        .filter(falsy)
-        .map(async (v) => {
-          const id =
-            v.spriteId === 'default'
-              ? v.symbol.id
-              : `${v.spriteId}/${v.symbol.id}`
+    for (const sprite of this.sprites) {
+      const processed = await sprite.getProcessedSymbols()
 
-          const importPath = relative(buildPath, v.symbol.filePath)
-          const { attributes, fileContents } = await v.symbol.getProcessed()
+      for (const v of processed) {
+        const id = sprite.getPrefix() + v.symbol.id
 
-          const importMethod = this.context.dev
-            ? `() => Promise.resolve(${JSON.stringify(fileContents)})`
-            : `() => import('${importPath}?raw').then(v => v.default)`
+        const importMethodInline = JSON.stringify(v.processed.fileContents)
+        const importMethodDynamic = `() => import('${v.symbol.filePath}?raw').then(v => v.default)`
 
-          return `'${id}': { import: ${importMethod}, attributes: ${JSON.stringify(
-            attributes,
-          )} },`
-        }),
-    )
+        // In dev mode, always use the inlined markup.
+        // In build, use dynamic import on client and inline on the server.
+        const importStatement = this.context.dev
+          ? importMethodInline
+          : `import.meta.client ? ${importMethodDynamic} : ${importMethodInline}`
+
+        imports.push(
+          `'${id}': { import: ${importStatement}, attributes: ${JSON.stringify(
+            v.processed.attributes,
+          )} },`,
+        )
+      }
+    }
 
     return `export const SYMBOL_IMPORTS = {
-  ${imports.join('\n  ')}
+  ${imports.filter(falsy).join('\n  ')}
 }`
   }
 
@@ -180,7 +158,7 @@ declare module '#nuxt-svg-sprite/data' {
     return `import type { NuxtSvgSpriteSymbol } from './runtime'
 
 type SymbolImport = {
-  import: () => Promise<string>
+  import: (() => Promise<string>) | string
   attributes: Record<string, string>
 }
 
@@ -188,24 +166,39 @@ export const SYMBOL_IMPORTS: Record<NuxtSvgSpriteSymbol, SymbolImport>
 `
   }
 
+  /**
+   * SVG file was added.
+   */
   async handleAdd(path: string): Promise<void> {
     await Promise.all(this.sprites.map((sprite) => sprite.handleAdd(path)))
   }
 
+  /**
+   * SVG file was changed.
+   */
   async handleChange(path: string): Promise<void> {
     await Promise.all(this.sprites.map((sprite) => sprite.handleChange(path)))
   }
 
+  /**
+   * SVG file was removed.
+   */
   async handleUnlink(path: string): Promise<void> {
     await Promise.all(this.sprites.map((sprite) => sprite.handleUnlink(path)))
   }
 
+  /**
+   * Any directory was added.
+   */
   async handleAddDir(folderPath: string): Promise<void> {
     await Promise.all(
       this.sprites.map((sprite) => sprite.handleAddDir(folderPath)),
     )
   }
 
+  /**
+   * Any directory was removed.
+   */
   async handleUnlinkDir(folderPath: string): Promise<void> {
     await Promise.all(
       this.sprites.map((sprite) => sprite.handleUnlinkDir(folderPath)),

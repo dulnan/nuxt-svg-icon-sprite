@@ -6,7 +6,7 @@ import type { ExtractedSymbol, SpriteConfig } from '../types'
 /**
  * A fully processed symbol.
  */
-type SpriteSymbolProcessed = {
+export type SpriteSymbolProcessed = {
   fileContents: string
   attributes: Record<string, string>
   symbolDom: string
@@ -18,6 +18,7 @@ export class SpriteSymbol {
   filePath: string
   id: string
   processed: SpriteSymbolProcessed | null = null
+  isValid: boolean | null = null
 
   constructor(filePath: string, config: SpriteConfig) {
     this.id = path.parse(filePath).name
@@ -27,33 +28,52 @@ export class SpriteSymbol {
 
   reset() {
     this.processed = null
+    this.isValid = null
   }
 
-  async getProcessed(): Promise<SpriteSymbolProcessed> {
+  async getProcessed(): Promise<SpriteSymbolProcessed | null> {
+    if (this.isValid === false) {
+      return null
+    }
+
     if (!this.processed) {
-      const buffer = await fs.readFile(this.filePath)
-      const fileContents = buffer.toString()
-      const processedSvg = this.config.processSvg
-        ? await this.config.processSvg(fileContents, this.filePath)
-        : fileContents
+      try {
+        const buffer = await fs.readFile(this.filePath)
+        const fileContents = buffer.toString().trim()
 
-      const symbol = extractSymbol(processedSvg)
-      symbol.attributes.id = this.id
-      const processedSymbol = await this.processSymbol(symbol)
+        if (!fileContents) {
+          throw new Error('SVG file is empty.')
+        }
 
-      const attributesString: string = Object.keys(processedSymbol.attributes)
-        .map((attribute: any) => {
-          return `${attribute}="${processedSymbol.attributes[attribute]}"`
-        })
-        .join(' ')
-      const spriteContent = `<symbol ${attributesString}>\n  ${processedSymbol.content}\n</symbol>`
-      const symbolDom = processedSymbol.content
-      const attributes = processedSymbol.attributes
-      this.processed = {
-        fileContents,
-        attributes,
-        symbolDom,
-        spriteContent,
+        if (!fileContents.includes('<svg')) {
+          throw new Error('Invalid SVG.')
+        }
+
+        const processedSvg = this.config.processSvg
+          ? await this.config.processSvg(fileContents, this.filePath)
+          : fileContents
+
+        const symbol = extractSymbol(processedSvg)
+        symbol.attributes.id = this.id
+        const processedSymbol = await this.processSymbol(symbol)
+
+        const attributesString: string = Object.keys(processedSymbol.attributes)
+          .map((attribute: any) => {
+            return `${attribute}="${processedSymbol.attributes[attribute]}"`
+          })
+          .join(' ')
+        const spriteContent = `<symbol ${attributesString}>\n  ${processedSymbol.content}\n</symbol>`
+        const symbolDom = processedSymbol.content
+        const attributes = processedSymbol.attributes
+        this.processed = {
+          fileContents,
+          attributes,
+          symbolDom,
+          spriteContent,
+        }
+        this.isValid = true
+      } catch {
+        this.isValid = false
       }
     }
 

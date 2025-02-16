@@ -11,24 +11,37 @@ const SymbolInline = defineComponent({
     },
   },
   async setup(props) {
+    const [sprite, name] = (props.name || '').split('/')
     const symbolImport = SYMBOL_IMPORTS[props.name]
+
+    // Invalid symbol name.
     if (!symbolImport) {
-      return () => ''
+      return () =>
+        h('svg', {
+          'data-symbol': name || sprite,
+          xmlns: 'http://www.w3.org/2000/svg',
+          innerHTML: '',
+          'aria-hidden': runtimeOptions.ariaHidden ? 'true' : undefined,
+        })
     }
 
-    const data = await symbolImport.import()
+    // It can either be a method that imports the markup dynamically (client side)
+    // or the actual markup as a string (server side).
+    const data =
+      typeof symbolImport.import === 'string'
+        ? symbolImport.import
+        : await symbolImport.import()
 
     // Extract the contents of the SVG (everything between <svg> and </svg>)
     const innerHTML = data.match(/<svg[^>]*>((.|[\r\n])*?)<\/svg>/im)?.[1] || ''
 
-    const [sprite, name] = (props.name || '').split('/')
     return () =>
       h('svg', {
-        xmlns: 'http://www.w3.org/2000/svg',
         'data-symbol': name || sprite,
         // Pass the attributes from the raw SVG (things like viewBox).
         // Attributes passed to <SpriteSymbol> are automatically added by Vue.
         ...symbolImport.attributes,
+        xmlns: 'http://www.w3.org/2000/svg',
         innerHTML,
         id: null,
         'aria-hidden': runtimeOptions.ariaHidden ? 'true' : undefined,
@@ -81,10 +94,7 @@ export default defineComponent({
 
       // Create the <use> tag.
       const symbolDom = h('use', {
-        href:
-          (SPRITE_PATHS as any)[name ? sprite : 'default'] +
-          '#' +
-          (name || sprite),
+        href: SPRITE_PATHS[name ? sprite : 'default'] + '#' + (name || sprite),
       })
 
       return props.noWrapper

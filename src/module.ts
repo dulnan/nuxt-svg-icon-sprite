@@ -8,8 +8,8 @@ import {
   addTypeTemplate,
 } from '@nuxt/kit'
 import { createDevServerHandler } from './module/devServerHandler'
-import type { SpriteConfig, RuntimeOptions, ModuleContext } from './types'
-import { SymbolCollector } from './module/SymbolCollector'
+import type { SpriteConfig, RuntimeOptions } from './types'
+import { Collector } from './module/Collector'
 
 /**
  * Options for the nuxt-svg-icon-sprite module.
@@ -75,15 +75,13 @@ export default defineNuxtModule<ModuleOptions>({
       ariaHidden: !!moduleOptions.ariaHidden,
     }
 
-    const context: ModuleContext = {
+    const collector = new Collector(moduleOptions.sprites, {
       dev: DEV,
       srcDir,
       buildAssetDir: nuxt.options.app.buildAssetsDir,
       runtimeOptions,
       buildResolver,
-    }
-
-    const collector = new SymbolCollector(moduleOptions.sprites, context)
+    })
     await collector.init()
 
     if (DEV) {
@@ -93,11 +91,10 @@ export default defineNuxtModule<ModuleOptions>({
         route: '/_nuxt/nuxt-svg-sprite',
       })
     } else {
-      collector.sprites.forEach((sprite) => {
-        const path =
-          'dist/client' +
-          nuxt.options.app.buildAssetsDir +
-          sprite.getSpriteFileName()
+      // For the build the sprite is generated as a dist file.
+      collector.sprites.forEach(async (sprite) => {
+        const fileName = await sprite.getSpriteFileName()
+        const path = 'dist/client' + nuxt.options.app.buildAssetsDir + fileName
         addTemplate({
           filename: path,
           write: true,
@@ -113,7 +110,6 @@ export default defineNuxtModule<ModuleOptions>({
     // sprite.
     const template = addTemplate({
       filename: 'nuxt-svg-sprite/runtime.mjs',
-      write: false,
       getContents: () => collector.getRuntimeTemplate(),
     })
 
@@ -125,7 +121,6 @@ export default defineNuxtModule<ModuleOptions>({
 
     const templateData = addTemplate({
       filename: 'nuxt-svg-sprite/data.mjs',
-      write: false,
       getContents: () => collector.buildDataTemplate(),
     })
 
@@ -136,9 +131,7 @@ export default defineNuxtModule<ModuleOptions>({
     })
 
     const templateSymbolImport = addTemplate({
-      filename: 'nuxt-svg-sprite/symbol-import.js',
-      // Only write it in build.
-      write: !DEV,
+      filename: 'nuxt-svg-sprite/symbol-import.mjs',
       getContents: () => collector.buildSymbolImportTemplate(),
     })
 
@@ -157,18 +150,14 @@ export default defineNuxtModule<ModuleOptions>({
       templateSymbolImport.dst
 
     nuxt.hook('builder:watch', async (event, pathRelative) => {
-      // We only care about SVG files.
-      if (!pathRelative.match(/\.(svg)$/)) {
-        return
-      }
-
+      const isSvgFile = !!pathRelative.match(/\.(svg)$/)
       const path = srcResolver.resolve(pathRelative)
 
-      if (event === 'add') {
+      if (event === 'add' && isSvgFile) {
         await collector.handleAdd(path)
-      } else if (event === 'change') {
+      } else if (event === 'change' && isSvgFile) {
         await collector.handleChange(path)
-      } else if (event === 'unlink') {
+      } else if (event === 'unlink' && isSvgFile) {
         await collector.handleUnlink(path)
       } else if (event === 'addDir') {
         await collector.handleAddDir(path)
