@@ -13,7 +13,7 @@ const SymbolInline = defineComponent({
   async setup(props) {
     const symbolImport = SYMBOL_IMPORTS[props.name]
     if (!symbolImport) {
-      return ''
+      return () => ''
     }
 
     const data = await symbolImport.import()
@@ -102,7 +102,6 @@ export default defineComponent({
   },
 })
 
-// Don't have to do anything, just accept.
 if (import.meta.hot) {
-  import.meta.hot.accept(() => {})
+  import.meta.hot.accept()
 }

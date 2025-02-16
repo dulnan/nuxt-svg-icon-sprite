@@ -5,6 +5,8 @@ const importPattern = path.resolve(__dirname, './assets/symbols') + '/**/*.svg'
 export default defineNuxtConfig({
   modules: ['./../src/module'],
 
+  debug: true,
+
   imports: {
     autoImport: false,
   },

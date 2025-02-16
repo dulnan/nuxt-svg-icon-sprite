@@ -1,20 +1,15 @@
 import {
   createResolver,
   defineNuxtModule,
-  updateTemplates,
   addTemplate,
   addComponent,
   addImportsDir,
+  addDevServerHandler,
+  addTypeTemplate,
 } from '@nuxt/kit'
-import type { SpriteConfig, ModuleContext, RuntimeOptions } from './types'
-import {
-  buildRuntimeTemplate,
-  buildDataTemplate,
-  generateSprite,
-  getSpriteFileName,
-  getAllHashes,
-  buildSymbolImportTemplate,
-} from './utils'
+import { createDevServerHandler } from './module/devServerHandler'
+import type { SpriteConfig, RuntimeOptions, ModuleContext } from './types'
+import { SymbolCollector } from './module/SymbolCollector'
 
 /**
  * Options for the nuxt-svg-icon-sprite module.
@@ -58,6 +53,8 @@ export default defineNuxtModule<ModuleOptions>({
     // The path to the source directory of this module's consumer.
     const srcDir = nuxt.options.srcDir
 
+    const srcResolver = createResolver(srcDir)
+
     // The path of this module.
     const resolver = createResolver(import.meta.url)
 
@@ -74,95 +71,81 @@ export default defineNuxtModule<ModuleOptions>({
       global: true,
     })
 
-    const spriteKeys = Object.keys(moduleOptions.sprites)
-
-    // Keeps track of the current generated sprite data.
-    const context: ModuleContext = spriteKeys.reduce<ModuleContext>(
-      (acc, v) => {
-        acc[v] = undefined
-        return acc
-      },
-      {},
-    )
-
-    // Generate all sprites and update module context.
-    function generateAllSprites() {
-      return Promise.all(
-        spriteKeys.map(async (key) => {
-          // Generate sprite initially.
-          context[key] = await generateSprite(
-            key,
-            moduleOptions.sprites[key],
-            srcDir,
-            DEV,
-          )
-        }),
-      )
-    }
-
-    // Initially generate all sprites.
-    await generateAllSprites()
-
-    // Add template for each sprite.
-    spriteKeys.forEach((key) => {
-      // Add the template for the SVG sprite.
-      addTemplate({
-        filename:
-          'dist/client' +
-          nuxt.options.app.buildAssetsDir +
-          getSpriteFileName(key, context[key]?.hash, DEV),
-        write: true,
-        options: {
-          nuxtSvgSprite: true,
-        },
-        getContents: () => {
-          return context[key]?.content || ''
-        },
-      })
-    })
-
     const runtimeOptions: RuntimeOptions = {
       ariaHidden: !!moduleOptions.ariaHidden,
+    }
+
+    const context: ModuleContext = {
+      dev: DEV,
+      srcDir,
+      buildAssetDir: nuxt.options.app.buildAssetsDir,
+      runtimeOptions,
+      buildResolver,
+    }
+
+    const collector = new SymbolCollector(moduleOptions.sprites, context)
+    await collector.init()
+
+    if (DEV) {
+      // During development the sprite is returned by a server handler.
+      addDevServerHandler({
+        handler: createDevServerHandler(collector),
+        route: '/_nuxt/nuxt-svg-sprite',
+      })
+    } else {
+      collector.sprites.forEach((sprite) => {
+        const path =
+          'dist/client' +
+          nuxt.options.app.buildAssetsDir +
+          sprite.getSpriteFileName()
+        addTemplate({
+          filename: path,
+          write: true,
+          getContents: async () => {
+            const { content } = await sprite.getSprite()
+            return content
+          },
+        })
+      })
     }
 
     // Template containing the types and the relative URL path to the generated
     // sprite.
     const template = addTemplate({
-      filename: 'nuxt-svg-sprite/runtime.ts',
+      filename: 'nuxt-svg-sprite/runtime.mjs',
+      write: false,
+      getContents: () => collector.getRuntimeTemplate(),
+    })
+
+    addTypeTemplate({
+      filename: 'nuxt-svg-sprite/runtime.d.ts',
       write: true,
-      options: {
-        nuxtSvgSprite: true,
-      },
-      getContents: () => {
-        return buildRuntimeTemplate(
-          context,
-          DEV,
-          runtimeOptions,
-          nuxt.options.app.buildAssetsDir,
-        )
-      },
+      getContents: () => collector.getRuntimeTypeTemplate(),
     })
 
     const templateData = addTemplate({
-      filename: 'nuxt-svg-sprite/data.ts',
+      filename: 'nuxt-svg-sprite/data.mjs',
+      write: false,
+      getContents: () => collector.buildDataTemplate(),
+    })
+
+    addTypeTemplate({
+      filename: 'nuxt-svg-sprite/data.d.ts',
       write: true,
-      options: {
-        nuxtSvgSprite: true,
-      },
-      getContents: () => {
-        return buildDataTemplate(context)
-      },
+      getContents: () => collector.buildDataTypeTemplate(),
     })
 
     const templateSymbolImport = addTemplate({
-      filename: 'nuxt-svg-sprite/symbol-import.ts',
+      filename: 'nuxt-svg-sprite/symbol-import.js',
+      // Only write it in build.
+      write: !DEV,
+      getContents: () => collector.buildSymbolImportTemplate(),
+    })
+
+    addTypeTemplate({
+      filename: 'nuxt-svg-sprite/symbol-import.d.ts',
       write: true,
-      options: {
-        nuxtSvgSprite: true,
-      },
-      getContents: () => {
-        return buildSymbolImportTemplate(context, buildResolver)
-      },
+      getContents: () => collector.buildSymbolImportTypeTemplate(),
     })
 
     // Add an alias for the generated template. This is used inside the
@@ -173,41 +156,25 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.alias['#nuxt-svg-sprite/symbol-import'] =
       templateSymbolImport.dst
 
-    if (DEV) {
-      nuxt.hook('vite:serverCreated', (viteServer) => {
-        // Watch for file changes in dev mode.
-        nuxt.hook('builder:watch', async (event, path) => {
-          // We only care about SVG files.
-          if (!path.match(/\.(svg)$/)) {
-            return
-          }
+    nuxt.hook('builder:watch', async (event, pathRelative) => {
+      // We only care about SVG files.
+      if (!pathRelative.match(/\.(svg)$/)) {
+        return
+      }
 
-          const hashBefore = getAllHashes(context)
-          await generateAllSprites()
-          const hashAfter = getAllHashes(context)
+      const path = srcResolver.resolve(pathRelative)
 
-          // Don't update templates if nothing changed.
-          if (hashBefore === hashAfter) {
-            return
-          }
-
-          // Both templates must update when the sprite changes.
-          await updateTemplates({
-            filter: (template) => {
-              return template.options && template.options.nuxtSvgSprite
-            },
-          })
-
-          // This template is imported in the SpriteSymbol component, so we can
-          // trigger a reload, which will also reload the sprite.
-          const modules = viteServer.moduleGraph.getModulesByFile(template.dst)
-          if (modules) {
-            modules.forEach((v) => {
-              viteServer.reloadModule(v)
-            })
-          }
-        })
-      })
-    }
+      if (event === 'add') {
+        await collector.handleAdd(path)
+      } else if (event === 'change') {
+        await collector.handleChange(path)
+      } else if (event === 'unlink') {
+        await collector.handleUnlink(path)
+      } else if (event === 'addDir') {
+        await collector.handleAddDir(path)
+      } else if (event === 'unlinkDir') {
+        await collector.handleUnlinkDir(path)
+      }
+    })
   },
 })

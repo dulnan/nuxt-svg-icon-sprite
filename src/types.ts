@@ -1,4 +1,6 @@
-export type Symbol = {
+import type { Resolver } from '@nuxt/kit'
+
+export type ExtractedSymbol = {
   content: string
   attributes: Record<string, string>
 }
@@ -33,9 +35,9 @@ export type SpriteConfig = {
    * symbol won't work!
    */
   processSymbol?: (
-    symbol: Symbol,
+    symbol: ExtractedSymbol,
     filePath: string,
-  ) => Symbol | string | Promise<Symbol | string>
+  ) => ExtractedSymbol | string | Promise<ExtractedSymbol | string>
 
   /**
    * Process the finished sprite right before it's saved.
@@ -58,8 +60,16 @@ export type SpriteContext = {
   name: string
 }
 
-export type ModuleContext = Record<string, SpriteContext | undefined>
+export type ModuleContextLegacy = Record<string, SpriteContext | undefined>
 
 export type RuntimeOptions = {
   ariaHidden: boolean
+}
+
+export type ModuleContext = {
+  dev: boolean
+  srcDir: string
+  buildAssetDir: string
+  runtimeOptions: RuntimeOptions
+  buildResolver: Resolver
 }
