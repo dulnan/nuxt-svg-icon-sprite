@@ -1,10 +1,7 @@
 import type { ConsolaInstance } from 'consola'
+import { parse } from 'node-html-parser'
 import { useLogger } from '@nuxt/kit'
-import type {
-  ExtractedSymbol,
-  SymbolProcessed,
-  ModuleContextLegacy,
-} from '../types'
+import type { ExtractedSymbol, SymbolProcessed } from '../types'
 
 /**
  * Type check for falsy values.
@@ -19,25 +16,15 @@ export function falsy<T>(value: T): value is NonNullable<T> {
 export const logger: ConsolaInstance = useLogger('nuxt-svg-icon-sprite')
 
 export function extractSymbol(source = ''): ExtractedSymbol {
-  const [, parsedAttributes, content] =
-    source.match(/<svg(.*?)>(.*?)<\/svg>/is) || []
-  const matches = (parsedAttributes || '').match(
-    /([\w-:]+)(=)?("[^<>"]*"|'[^<>']*'|[\w-:]+)/g,
-  )
-
-  const attributes =
-    matches?.reduce<Record<string, string>>((acc, attribute) => {
-      const [name, unformattedValue] = attribute.split('=')
-      acc[name] = unformattedValue
-        ? unformattedValue.replace(/['"]/g, '')
-        : 'true'
-
-      return acc
-    }, {}) || {}
+  const dom = parse(source)
+  const svg = dom.querySelector('svg')
+  if (!svg) {
+    throw new Error('Invalid SVG.')
+  }
 
   return {
-    attributes,
-    content,
+    content: svg.innerHTML,
+    attributes: svg.attributes || {},
   }
 }
 
@@ -54,21 +41,4 @@ export function filterDuplicates() {
     checked[symbol.id] = true
     return true
   }
-}
-
-/**
- * Return the file name for a sprite.
- */
-export function getSpriteFileName(
-  name: string,
-  hash = 'undefined',
-  isDev: boolean,
-) {
-  return isDev ? `sprite-${name}.svg` : `sprite-${name}.${hash}.svg`
-}
-
-export function getAllHashes(context: ModuleContextLegacy) {
-  return Object.keys(context)
-    .map((v) => context[v]?.hash || 'undefined')
-    .join('')
 }

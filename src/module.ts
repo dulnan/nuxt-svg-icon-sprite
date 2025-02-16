@@ -104,6 +104,25 @@ export default defineNuxtModule<ModuleOptions>({
           },
         })
       })
+
+      // Output all SVGs.
+      for (const sprite of collector.sprites) {
+        const symbols = await sprite.getProcessedSymbols()
+
+        for (const processed of symbols) {
+          addTemplate({
+            filename:
+              'nuxt-svg-sprite/symbols/' +
+              sprite.getPrefix() +
+              processed.symbol.id +
+              '.mjs',
+            write: true,
+            getContents: () => {
+              return `export default ${JSON.stringify(processed.processed.symbolDom)}`
+            },
+          })
+        }
+      }
     }
 
     // Template containing the types and the relative URL path to the generated

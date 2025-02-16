@@ -10,7 +10,6 @@ export type SpriteSymbolProcessed = {
   fileContents: string
   attributes: Record<string, string>
   symbolDom: string
-  spriteContent: string
 }
 
 export class SpriteSymbol {
@@ -57,19 +56,12 @@ export class SpriteSymbol {
         symbol.attributes.id = this.id
         const processedSymbol = await this.processSymbol(symbol)
 
-        const attributesString: string = Object.keys(processedSymbol.attributes)
-          .map((attribute: any) => {
-            return `${attribute}="${processedSymbol.attributes[attribute]}"`
-          })
-          .join(' ')
-        const spriteContent = `<symbol ${attributesString}>\n  ${processedSymbol.content}\n</symbol>`
         const symbolDom = processedSymbol.content
         const attributes = processedSymbol.attributes
         this.processed = {
           fileContents,
           attributes,
           symbolDom,
-          spriteContent,
         }
         this.isValid = true
       } catch {

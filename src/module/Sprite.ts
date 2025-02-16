@@ -1,4 +1,5 @@
 import { hash } from 'ohash'
+import { HTMLElement } from 'node-html-parser'
 import { resolveFiles, resolvePath } from '@nuxt/kit'
 import { falsy, logger } from '../utils'
 import type { ModuleContext, SpriteConfig } from '../types'
@@ -30,6 +31,11 @@ export class Sprite {
    */
   generatedSprite: string | null = null
 
+  /**
+   * The hash of the generated sprite.
+   */
+  hash: string | null = null
+
   constructor(name: string, config: SpriteConfig, context: ModuleContext) {
     this.name = name
     this.config = config
@@ -41,6 +47,7 @@ export class Sprite {
    */
   reset() {
     this.generatedSprite = null
+    this.hash = null
   }
 
   async getSpriteFileName() {
@@ -77,7 +84,11 @@ export class Sprite {
         }
         return null
       }),
-    ).then((processed) => processed.filter(falsy))
+    ).then((processed) =>
+      processed
+        .filter(falsy)
+        .sort((a, b) => a.symbol.id.localeCompare(b.symbol.id)),
+    )
   }
 
   /**
@@ -107,29 +118,40 @@ export class Sprite {
   }
 
   async getSprite(): Promise<{ hash: string; content: string }> {
-    if (!this.generatedSprite) {
-      const symbols = await Promise.all(
-        this.symbols.map((symbol) => symbol.getProcessed()),
-      ).then((processed) => processed.filter(falsy).map((v) => v.spriteContent))
+    if (!this.generatedSprite || !this.hash) {
+      const svg = new HTMLElement('svg', {})
+      svg.setAttributes({
+        xmlns: 'http://www.w3.org/2000/svg',
+        version: '1.1',
+      })
+      const defs = new HTMLElement('defs', {})
+      const processedSymbols = await this.getProcessedSymbols()
 
-      // @TODO: filterDuplicates
-      let content = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1"><defs>\n${symbols.join(
-        '  \n',
-      )}\n</defs></svg>`
+      for (const processed of processedSymbols) {
+        const symbol = new HTMLElement('symbol', {})
+        symbol.setAttributes(processed.processed.attributes)
+        symbol.setAttribute('id', processed.symbol.id)
+        symbol.innerHTML = processed.processed.symbolDom
+        defs.appendChild(symbol)
+      }
+
+      svg.appendChild(defs)
+
+      let content = svg.toString()
+
       if (this.config.processSprite) {
         content = await Promise.resolve(
           this.config.processSprite(content, this.name),
         )
       }
 
+      this.hash = hash(content)
       this.generatedSprite = content
     }
 
-    const spriteHash = hash(this.generatedSprite)
     return {
       content: this.generatedSprite,
-      hash: spriteHash,
+      hash: this.hash,
     }
   }
 

@@ -53,15 +53,6 @@ export type SymbolProcessed = {
   filePath: string
 }
 
-export type SpriteContext = {
-  content: string
-  hash: string
-  symbols: SymbolProcessed[]
-  name: string
-}
-
-export type ModuleContextLegacy = Record<string, SpriteContext | undefined>
-
 export type RuntimeOptions = {
   ariaHidden: boolean
 }

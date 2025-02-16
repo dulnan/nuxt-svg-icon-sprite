@@ -26,7 +26,8 @@ export class Collector {
     for (const sprite of this.sprites) {
       if (this.context.dev) {
         const { hash } = await sprite.getSprite()
-        fileNames[sprite.name] = `/_nuxt/nuxt-svg-sprite/${sprite.name}/${hash}`
+        fileNames[sprite.name] =
+          `/_nuxt/nuxt-svg-sprite/sprite.${sprite.name}.${hash}.svg`
       } else {
         fileNames[sprite.name] =
           this.context.buildAssetDir + (await sprite.getSpriteFileName())
@@ -50,7 +51,7 @@ export const runtimeOptions = ${JSON.stringify(this.context.runtimeOptions)}
       }
     }
 
-    const NuxtSvgSpriteSymbol = types.join('  |\n') || 'never'
+    const NuxtSvgSpriteSymbol = types.sort().join('  |\n') || 'never'
 
     return `
 declare module '#nuxt-svg-sprite/runtime' {
@@ -101,7 +102,7 @@ declare module '#nuxt-svg-sprite/runtime' {
     }
 
     return `
-export const ALL_SYMBOL_KEYS = ${JSON.stringify(allIcons, null, 2)}
+export const ALL_SYMBOL_KEYS = ${JSON.stringify(allIcons.sort(), null, 2)}
 
 export const ALL_SYMBOL_DOMS = ${JSON.stringify(
       Object.fromEntries(allSymbolDoms),
@@ -132,8 +133,8 @@ export const ALL_SPRITES = ${JSON.stringify(allSprites, null, 2)}
       for (const v of processed) {
         const id = sprite.getPrefix() + v.symbol.id
 
-        const importMethodInline = JSON.stringify(v.processed.fileContents)
-        const importMethodDynamic = `() => import('${v.symbol.filePath}?raw').then(v => v.default)`
+        const importMethodInline = JSON.stringify(v.processed.symbolDom)
+        const importMethodDynamic = `() => import('#build/nuxt-svg-sprite/symbols/${id}').then(v => v.default)`
 
         // In dev mode, always use the inlined markup.
         // In build, use dynamic import on client and inline on the server.
@@ -150,20 +151,21 @@ export const ALL_SPRITES = ${JSON.stringify(allSprites, null, 2)}
     }
 
     return `export const SYMBOL_IMPORTS = {
-  ${imports.filter(falsy).join('\n  ')}
+  ${imports.sort().filter(falsy).join('\n  ')}
 }`
   }
 
   buildSymbolImportTypeTemplate() {
-    return `import type { NuxtSvgSpriteSymbol } from './runtime'
+    return `declare module '#nuxt-svg-sprite/symbol-import' {
+  import type { NuxtSvgSpriteSymbol } from './runtime'
 
-type SymbolImport = {
-  import: (() => Promise<string>) | string
-  attributes: Record<string, string>
-}
+  type SymbolImport = {
+    import: (() => Promise<string>) | string
+    attributes: Record<string, string>
+  }
 
-export const SYMBOL_IMPORTS: Record<NuxtSvgSpriteSymbol, SymbolImport>
-`
+  export const SYMBOL_IMPORTS: Record<NuxtSvgSpriteSymbol, SymbolImport>
+}`
   }
 
   /**

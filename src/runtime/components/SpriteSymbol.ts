@@ -27,13 +27,10 @@ const SymbolInline = defineComponent({
 
     // It can either be a method that imports the markup dynamically (client side)
     // or the actual markup as a string (server side).
-    const data =
+    const innerHTML =
       typeof symbolImport.import === 'string'
         ? symbolImport.import
         : await symbolImport.import()
-
-    // Extract the contents of the SVG (everything between <svg> and </svg>)
-    const innerHTML = data.match(/<svg[^>]*>((.|[\r\n])*?)<\/svg>/im)?.[1] || ''
 
     return () =>
       h('svg', {
@@ -43,7 +40,7 @@ const SymbolInline = defineComponent({
         ...symbolImport.attributes,
         xmlns: 'http://www.w3.org/2000/svg',
         innerHTML,
-        id: null,
+        id: undefined,
         'aria-hidden': runtimeOptions.ariaHidden ? 'true' : undefined,
       })
   },
