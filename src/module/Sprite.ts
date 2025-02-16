@@ -141,7 +141,6 @@ export class Sprite {
         this.reset()
       }
     }
-    return Promise.resolve()
   }
 
   handleChange(path: string): Promise<void> {
@@ -163,11 +162,26 @@ export class Sprite {
     return Promise.resolve()
   }
 
-  handleAddDir(folderPath: string): Promise<void> {
-    return Promise.resolve()
+  async handleAddDir(folderPath: string): Promise<void> {
+    const importPatternFiles = await this.getImportPatternFiles()
+    const existingFilePaths = this.symbols.map((v) => v.filePath)
+
+    let hasAdded = false
+
+    for (const filePath of importPatternFiles) {
+      if (!existingFilePaths.includes(filePath)) {
+        this.symbols.push(new SpriteSymbol(filePath, this.config))
+        hasAdded = true
+      }
+    }
+
+    if (hasAdded) {
+      this.reset()
+    }
   }
 
   handleUnlinkDir(folderPath: string): Promise<void> {
+    // Find symbols that contain the removed folder path.
     const toRemove = this.symbols
       .filter((v) => v.filePath.includes(folderPath))
       .map((v) => v.filePath)
