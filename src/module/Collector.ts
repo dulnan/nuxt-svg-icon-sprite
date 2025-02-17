@@ -1,4 +1,3 @@
-import { falsy } from '../utils'
 import type { ModuleContext, SpriteConfig } from '../types'
 import { Sprite } from './Sprite'
 
@@ -193,10 +192,8 @@ export const ALL_SPRITES = ${JSON.stringify(allSprites, null, 2)}
   /**
    * Any directory was added.
    */
-  async handleAddDir(folderPath: string): Promise<void> {
-    await Promise.all(
-      this.sprites.map((sprite) => sprite.handleAddDir(folderPath)),
-    )
+  async handleAddDir(): Promise<void> {
+    await Promise.all(this.sprites.map((sprite) => sprite.handleAddDir()))
   }
 
   /**

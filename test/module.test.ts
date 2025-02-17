@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { setup } from '@nuxt/test-utils'
-import { describe, expect, test, vi } from 'vitest'
+import { describe } from 'vitest'
 
 describe.skip('nuxt-svg-icon-sprite', async () => {
   await setup({

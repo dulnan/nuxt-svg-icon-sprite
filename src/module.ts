@@ -177,7 +177,7 @@ export default defineNuxtModule<ModuleOptions>({
       } else if (event === 'unlink' && isSvgFile) {
         await collector.handleUnlink(path)
       } else if (event === 'addDir') {
-        await collector.handleAddDir(path)
+        await collector.handleAddDir()
       } else if (event === 'unlinkDir') {
         await collector.handleUnlinkDir(path)
       }

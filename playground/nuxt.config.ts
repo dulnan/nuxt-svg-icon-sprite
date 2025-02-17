@@ -3,7 +3,7 @@ import path from 'path'
 const importPattern = path.resolve(__dirname, './assets/symbols') + '/**/*.svg'
 
 export default defineNuxtConfig({
-  modules: ['./../src/module'],
+  modules: ['./../src/module', '@nuxt/eslint'],
 
   debug: false,
 

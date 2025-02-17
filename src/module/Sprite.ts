@@ -188,7 +188,7 @@ export class Sprite {
     return Promise.resolve()
   }
 
-  async handleAddDir(folderPath: string): Promise<void> {
+  async handleAddDir(): Promise<void> {
     const importPatternFiles = await this.getImportPatternFiles()
     const existingFilePaths = this.symbols.map((v) => v.filePath)
 

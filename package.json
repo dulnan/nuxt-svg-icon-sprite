@@ -30,23 +30,27 @@
     "docs:dev": "vitepress dev docs --port 5000",
     "docs:build": "vitepress build docs",
     "docs:serve": "vitepress serve docs --port 5000",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "prettier": "prettier --check .",
+    "prettier:fix": "prettier --write .",
     "test": "vitest",
     "test:ci": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "npx nuxi typecheck"
   },
   "dependencies": {
-    "@nuxt/kit": "^3.10.0"
+    "@nuxt/kit": "^3.10.0",
+    "node-html-parser": "^7.0.1"
   },
   "devDependencies": {
+    "@nuxt/eslint": "^1.0.1",
     "@nuxt/module-builder": "^0.5.5",
     "@nuxt/schema": "^3.10.0",
-    "@nuxtjs/eslint-config-typescript": "^12.1.0",
     "@vitest/coverage-c8": "^0.28.4",
-    "eslint": "^8.56.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.1.3",
-    "node-html-parser": "^7.0.1",
+    "eslint": "^9.20.1",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.3",
     "nuxt": "^3.15.4",
     "prettier": "^3.2.4",
     "tailwindcss": "^3.4.1",
