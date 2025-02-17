@@ -68,7 +68,7 @@ export class SpriteSymbol {
         })
         .catch((e) => {
           if (e instanceof Error) {
-            logger.error(`Failed to process SVG "${this.filePath}":`, e)
+            logger.warn(`Failed to process SVG "${this.filePath}":`, e)
           }
           return null
         })
