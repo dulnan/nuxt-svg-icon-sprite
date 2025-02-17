@@ -51,7 +51,7 @@ export const runtimeOptions = ${JSON.stringify(this.context.runtimeOptions)}
       }
     }
 
-    const NuxtSvgSpriteSymbol = types.sort().join('  |\n') || 'never'
+    const NuxtSvgSpriteSymbol = types.sort().join('\n    | ') || 'never'
 
     return `
 declare module '#nuxt-svg-sprite/runtime' {
@@ -133,7 +133,10 @@ export const ALL_SPRITES = ${JSON.stringify(allSprites, null, 2)}
       for (const v of processed) {
         const id = sprite.getPrefix() + v.symbol.id
 
-        const importMethodInline = JSON.stringify(v.processed.symbolDom)
+        const importMethodInline = JSON.stringify({
+          content: v.processed.symbolDom,
+          attributes: v.processed.attributes,
+        })
         const importMethodDynamic = `() => import('#build/nuxt-svg-sprite/symbols/${id}').then(v => v.default)`
 
         // In dev mode, always use the inlined markup.
@@ -142,16 +145,12 @@ export const ALL_SPRITES = ${JSON.stringify(allSprites, null, 2)}
           ? importMethodInline
           : `import.meta.client ? ${importMethodDynamic} : ${importMethodInline}`
 
-        imports.push(
-          `'${id}': { import: ${importStatement}, attributes: ${JSON.stringify(
-            v.processed.attributes,
-          )} },`,
-        )
+        imports.push(`${JSON.stringify(id)}: ${importStatement}`)
       }
     }
 
     return `export const SYMBOL_IMPORTS = {
-  ${imports.sort().filter(falsy).join('\n  ')}
+  ${imports.sort().join(',\n  ')}
 }`
   }
 
@@ -160,11 +159,13 @@ export const ALL_SPRITES = ${JSON.stringify(allSprites, null, 2)}
   import type { NuxtSvgSpriteSymbol } from './runtime'
 
   type SymbolImport = {
-    import: (() => Promise<string>) | string
+    content: string
     attributes: Record<string, string>
   }
 
-  export const SYMBOL_IMPORTS: Record<NuxtSvgSpriteSymbol, SymbolImport>
+  type SymbolImportDynamic = () => Promise<SymbolImport>
+
+  export const SYMBOL_IMPORTS: Record<NuxtSvgSpriteSymbol, SymbolImport | SymbolImportDynamic>
 }`
   }
 

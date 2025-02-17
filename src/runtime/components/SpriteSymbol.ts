@@ -2,6 +2,7 @@ import { defineComponent, type PropType, h } from 'vue'
 import type { NuxtSvgSpriteSymbol } from '#nuxt-svg-sprite/runtime'
 import { SPRITE_PATHS, runtimeOptions } from '#nuxt-svg-sprite/runtime'
 import { SYMBOL_IMPORTS } from '#nuxt-svg-sprite/symbol-import'
+import { useHead } from '#imports'
 
 const SymbolInline = defineComponent({
   props: {
@@ -25,21 +26,19 @@ const SymbolInline = defineComponent({
         })
     }
 
-    // It can either be a method that imports the markup dynamically (client side)
-    // or the actual markup as a string (server side).
-    const innerHTML =
-      typeof symbolImport.import === 'string'
-        ? symbolImport.import
-        : await symbolImport.import()
+    // It's either a method that imports it using import() (client side) or
+    // the object itself (server side).
+    const symbol =
+      typeof symbolImport === 'function' ? await symbolImport() : symbolImport
 
     return () =>
       h('svg', {
         'data-symbol': name || sprite,
         // Pass the attributes from the raw SVG (things like viewBox).
         // Attributes passed to <SpriteSymbol> are automatically added by Vue.
-        ...symbolImport.attributes,
+        ...symbol.attributes,
         xmlns: 'http://www.w3.org/2000/svg',
-        innerHTML,
+        innerHTML: symbol.content,
         id: undefined,
         'aria-hidden': runtimeOptions.ariaHidden ? 'true' : undefined,
       })
@@ -80,6 +79,23 @@ export default defineComponent({
     noWrapper: Boolean,
   },
   setup(props) {
+    if (import.meta.server && !props.inline) {
+      const [sprite, name] = (props.name || '').split('/')
+      const href = SPRITE_PATHS[name ? sprite : 'default']
+      if (href) {
+        useHead({
+          link: [
+            {
+              rel: 'prefetch',
+              href,
+              as: 'image',
+              type: 'image/svg+xml',
+            },
+          ],
+        })
+      }
+    }
+
     return () => {
       if (props.inline) {
         return h(SymbolInline, { name: props.name, key: props.name })

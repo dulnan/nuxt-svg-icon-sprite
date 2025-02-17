@@ -1,7 +1,7 @@
 import { hash } from 'ohash'
 import { HTMLElement } from 'node-html-parser'
 import { resolveFiles, resolvePath } from '@nuxt/kit'
-import { falsy, logger } from '../utils'
+import { logger } from '../utils'
 import type { ModuleContext, SpriteConfig } from '../types'
 import { SpriteSymbol, type SpriteSymbolProcessed } from './SpriteSymbol'
 
@@ -70,24 +70,25 @@ export class Sprite {
     return this.name === 'default' ? '' : this.name + '/'
   }
 
-  getProcessedSymbols(): Promise<
+  async getProcessedSymbols(): Promise<
     { symbol: SpriteSymbol; processed: SpriteSymbolProcessed }[]
   > {
-    return Promise.all(
-      this.symbols.map(async (symbol) => {
-        const processed = await symbol.getProcessed()
-        if (processed) {
-          return {
-            symbol,
-            processed,
-          }
-        }
-        return null
-      }),
-    ).then((processed) =>
-      processed
-        .filter(falsy)
-        .sort((a, b) => a.symbol.id.localeCompare(b.symbol.id)),
+    const processedSymbols: {
+      symbol: SpriteSymbol
+      processed: SpriteSymbolProcessed
+    }[] = []
+    for (const symbol of this.symbols) {
+      const processed = await symbol.getProcessed()
+      if (processed) {
+        processedSymbols.push({
+          symbol,
+          processed,
+        })
+      }
+    }
+
+    return processedSymbols.sort((a, b) =>
+      a.symbol.id.localeCompare(b.symbol.id),
     )
   }
 
@@ -132,18 +133,21 @@ export class Sprite {
         symbol.setAttributes(processed.processed.attributes)
         symbol.setAttribute('id', processed.symbol.id)
         symbol.innerHTML = processed.processed.symbolDom
+        if (this.context.dev) {
+          defs.append(`\n\n<!-- File: ${processed.symbol.filePath} -->\n`)
+        }
         defs.appendChild(symbol)
       }
 
       svg.appendChild(defs)
 
-      let content = svg.toString()
-
       if (this.config.processSprite) {
-        content = await Promise.resolve(
-          this.config.processSprite(content, this.name),
-        )
+        await this.config.processSprite(svg, {
+          name: this.name,
+        })
       }
+
+      const content = svg.toString()
 
       this.hash = hash(content)
       this.generatedSprite = content

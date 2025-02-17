@@ -1,5 +1,4 @@
 import path from 'path'
-import { parse } from 'node-html-parser'
 
 const importPattern = path.resolve(__dirname, './assets/symbols') + '/**/*.svg'
 
@@ -31,18 +30,15 @@ export default defineNuxtConfig({
         symbolFiles: {
           email: '~/assets/email.svg',
         },
-        processSvg: function (markup) {
-          const parsed = parse(markup)
-          const svg = parsed.querySelector('svg')
-          if (!svg) {
-            return ''
-          }
-
+        processSpriteSymbol: function (svg) {
           svg.removeAttribute('width')
           svg.removeAttribute('height')
 
-          const allElements = parsed.querySelectorAll('*')
+          const allElements = svg.querySelectorAll('*')
           const colorAttributes = ['stroke', 'fill']
+          if (svg.hasAttribute('data-keep-color')) {
+            return
+          }
           allElements.forEach((element) => {
             colorAttributes.forEach((attribute) => {
               const value = element.getAttribute(attribute)
@@ -51,7 +47,6 @@ export default defineNuxtConfig({
               }
             })
           })
-          return svg.toString()
         },
       },
       special: {

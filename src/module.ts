@@ -85,7 +85,7 @@ export default defineNuxtModule<ModuleOptions>({
     await collector.init()
 
     if (DEV) {
-      // During development the sprite is returned by a server handler.
+      // During development the sprite is served by a server handler.
       addDevServerHandler({
         handler: createDevServerHandler(collector),
         route: '/_nuxt/nuxt-svg-sprite',
@@ -105,7 +105,7 @@ export default defineNuxtModule<ModuleOptions>({
         })
       })
 
-      // Output all SVGs.
+      // Output all SVGs during build. These are used when inlining a symbol.
       for (const sprite of collector.sprites) {
         const symbols = await sprite.getProcessedSymbols()
 
@@ -118,7 +118,11 @@ export default defineNuxtModule<ModuleOptions>({
               '.mjs',
             write: true,
             getContents: () => {
-              return `export default ${JSON.stringify(processed.processed.symbolDom)}`
+              const symbol = {
+                content: processed.processed.symbolDom,
+                attributes: processed.processed.attributes,
+              }
+              return `export default ${JSON.stringify(symbol)}`
             },
           })
         }

@@ -1,13 +1,13 @@
 import path from 'node:path'
 import { promises as fs } from 'node:fs'
-import { extractSymbol } from '../utils'
-import type { ExtractedSymbol, SpriteConfig } from '../types'
+import { parse } from 'node-html-parser'
+import type { SpriteConfig } from '../types'
+import { logger } from '../utils'
 
 /**
  * A fully processed symbol.
  */
 export type SpriteSymbolProcessed = {
-  fileContents: string
   attributes: Record<string, string>
   symbolDom: string
 }
@@ -16,8 +16,7 @@ export class SpriteSymbol {
   config: SpriteConfig
   filePath: string
   id: string
-  processed: SpriteSymbolProcessed | null = null
-  isValid: boolean | null = null
+  processed: Promise<SpriteSymbolProcessed | null> | null = null
 
   constructor(filePath: string, config: SpriteConfig) {
     this.id = path.parse(filePath).name
@@ -27,63 +26,56 @@ export class SpriteSymbol {
 
   reset() {
     this.processed = null
-    this.isValid = null
   }
 
-  async getProcessed(): Promise<SpriteSymbolProcessed | null> {
-    if (this.isValid === false) {
-      return null
-    }
+  getProcessed(): Promise<SpriteSymbolProcessed | null> | null {
+    if (this.processed === null) {
+      this.processed = fs
+        .readFile(this.filePath)
+        .then(async (buffer) => {
+          const fileContents = buffer.toString().trim()
 
-    if (!this.processed) {
-      try {
-        const buffer = await fs.readFile(this.filePath)
-        const fileContents = buffer.toString().trim()
+          if (!fileContents) {
+            throw new Error('SVG file is empty.')
+          }
 
-        if (!fileContents) {
-          throw new Error('SVG file is empty.')
-        }
+          if (!fileContents.includes('<svg')) {
+            throw new Error('Invalid SVG.')
+          }
 
-        if (!fileContents.includes('<svg')) {
-          throw new Error('Invalid SVG.')
-        }
+          const dom = parse(fileContents)
+          const svg = dom.querySelector('svg')
+          if (!svg) {
+            throw new Error('Failed to find <svg> in file.')
+          }
 
-        const processedSvg = this.config.processSvg
-          ? await this.config.processSvg(fileContents, this.filePath)
-          : fileContents
+          if (this.config.processSpriteSymbol) {
+            await this.config.processSpriteSymbol(svg, {
+              id: this.id,
+              filePath: this.filePath,
+            })
+          }
 
-        const symbol = extractSymbol(processedSvg)
-        symbol.attributes.id = this.id
-        const processedSymbol = await this.processSymbol(symbol)
+          const attributes = {
+            ...svg.attributes,
+            id: this.id,
+          }
 
-        const symbolDom = processedSymbol.content
-        const attributes = processedSymbol.attributes
-        this.processed = {
-          fileContents,
-          attributes,
-          symbolDom,
-        }
-        this.isValid = true
-      } catch {
-        this.isValid = false
-      }
+          return {
+            attributes,
+            symbolDom: svg.innerHTML,
+          }
+        })
+        .catch((e) => {
+          if (e instanceof Error) {
+            logger.error(`Failed to process SVG "${this.filePath}":`, e)
+          }
+          return null
+        })
+
+      return this.processed
     }
 
     return this.processed
-  }
-
-  private async processSymbol(
-    symbol: ExtractedSymbol,
-  ): Promise<ExtractedSymbol> {
-    if (this.config.processSymbol) {
-      const result = await this.config.processSymbol(symbol, this.filePath)
-      if (typeof result === 'string') {
-        const processedSymbol = extractSymbol(result)
-        return processedSymbol
-      }
-      return result
-    }
-
-    return symbol
   }
 }
