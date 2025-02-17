@@ -1,7 +1,5 @@
-export type Symbol = {
-  content: string
-  attributes: Record<string, string>
-}
+import type { Resolver } from '@nuxt/kit'
+import type { HTMLElement } from 'node-html-parser'
 
 export type SpriteConfig = {
   /**
@@ -18,48 +16,30 @@ export type SpriteConfig = {
   symbolFiles?: Record<string, string>
 
   /**
-   * Process each SVG before it is converted to a symbol.
-   *
-   * If you want to use SVGO, this is where you can do that.
+   * Process the parsed SVG symbol.
    */
-  processSvg?: (markup: string, filePath: string) => string | Promise<string>
-
-  /**
-   * Process each parsed symbol before it is added to the sprite.
-   *
-   * Use this to add, update or remove attributes.
-   * Return either the same Symbol object or directly the markup for the
-   * <symbol>. Note that at least the ID attribute must be present, else the
-   * symbol won't work!
-   */
-  processSymbol?: (
-    symbol: Symbol,
-    filePath: string,
-  ) => Symbol | string | Promise<Symbol | string>
+  processSpriteSymbol?: (
+    symbol: HTMLElement,
+    context: { id: string; filePath: string },
+  ) => void | Promise<void>
 
   /**
    * Process the finished sprite right before it's saved.
    */
-  processSprite?: (markup: string, name: string) => string | Promise<string>
+  processSprite?: (
+    sprite: HTMLElement,
+    context: { name: string },
+  ) => void | Promise<void>
 }
-
-export type SymbolProcessed = {
-  id: string
-  content: string
-  symbolDom: string
-  symbolAttributes: Record<string, string>
-  filePath: string
-}
-
-export type SpriteContext = {
-  content: string
-  hash: string
-  symbols: SymbolProcessed[]
-  name: string
-}
-
-export type ModuleContext = Record<string, SpriteContext | undefined>
 
 export type RuntimeOptions = {
   ariaHidden: boolean
+}
+
+export type ModuleContext = {
+  dev: boolean
+  srcDir: string
+  buildAssetsDir: string
+  runtimeOptions: RuntimeOptions
+  buildResolver: Resolver
 }

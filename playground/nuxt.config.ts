@@ -3,7 +3,9 @@ import path from 'path'
 const importPattern = path.resolve(__dirname, './assets/symbols') + '/**/*.svg'
 
 export default defineNuxtConfig({
-  modules: ['./../src/module'],
+  modules: ['./../src/module', '@nuxt/eslint'],
+
+  debug: false,
 
   imports: {
     autoImport: false,
@@ -13,12 +15,42 @@ export default defineNuxtConfig({
     '/spa/**': { ssr: false },
   },
 
+  app: {
+    buildAssetsDir: '/custom-build-assets-dir',
+  },
+
+  vite: {
+    server: {
+      watch: {
+        usePolling: true,
+      },
+    },
+  },
+
   svgIconSprite: {
     sprites: {
       default: {
         importPatterns: [importPattern],
         symbolFiles: {
           email: '~/assets/email.svg',
+        },
+        processSpriteSymbol: function (svg) {
+          svg.removeAttribute('width')
+          svg.removeAttribute('height')
+
+          const allElements = svg.querySelectorAll('*')
+          const colorAttributes = ['stroke', 'fill']
+          if (svg.hasAttribute('data-keep-color')) {
+            return
+          }
+          allElements.forEach((element) => {
+            colorAttributes.forEach((attribute) => {
+              const value = element.getAttribute(attribute)
+              if (value) {
+                element.setAttribute(attribute, 'currentColor')
+              }
+            })
+          })
         },
       },
       special: {
