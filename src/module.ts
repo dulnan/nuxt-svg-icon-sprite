@@ -92,7 +92,7 @@ export default defineNuxtModule<ModuleOptions>({
       })
     } else {
       // For the build the sprite is generated as a dist file.
-      collector.sprites.forEach(async (sprite) => {
+      for (const sprite of collector.sprites) {
         const fileName = await sprite.getSpriteFileName()
         const path = 'dist/client' + nuxt.options.app.buildAssetsDir + fileName
         addTemplate({
@@ -103,7 +103,7 @@ export default defineNuxtModule<ModuleOptions>({
             return content
           },
         })
-      })
+      }
 
       // Output all SVGs during build. These are used when inlining a symbol.
       for (const sprite of collector.sprites) {
@@ -131,10 +131,10 @@ export default defineNuxtModule<ModuleOptions>({
 
     // Template containing the types and the relative URL path to the generated
     // sprite.
-    const template = addTemplate({
+    nuxt.options.alias['#nuxt-svg-sprite/runtime'] = addTemplate({
       filename: 'nuxt-svg-sprite/runtime.mjs',
       getContents: () => collector.getRuntimeTemplate(),
-    })
+    }).dst
 
     addTypeTemplate({
       filename: 'nuxt-svg-sprite/runtime.d.ts',
@@ -142,10 +142,11 @@ export default defineNuxtModule<ModuleOptions>({
       getContents: () => collector.getRuntimeTypeTemplate(),
     })
 
-    const templateData = addTemplate({
+    // Template containing the raw data (name of symbols, all sprites, symbol DOM, etc.).
+    nuxt.options.alias['#nuxt-svg-sprite/data'] = addTemplate({
       filename: 'nuxt-svg-sprite/data.mjs',
       getContents: () => collector.buildDataTemplate(),
-    })
+    }).dst
 
     addTypeTemplate({
       filename: 'nuxt-svg-sprite/data.d.ts',
@@ -153,24 +154,17 @@ export default defineNuxtModule<ModuleOptions>({
       getContents: () => collector.buildDataTypeTemplate(),
     })
 
-    const templateSymbolImport = addTemplate({
+    // Contains the imports for all symbols.
+    nuxt.options.alias['#nuxt-svg-sprite/symbol-import'] = addTemplate({
       filename: 'nuxt-svg-sprite/symbol-import.mjs',
       getContents: () => collector.buildSymbolImportTemplate(),
-    })
+    }).dst
 
     addTypeTemplate({
       filename: 'nuxt-svg-sprite/symbol-import.d.ts',
       write: true,
       getContents: () => collector.buildSymbolImportTypeTemplate(),
     })
-
-    // Add an alias for the generated template. This is used inside the
-    // SpriteSymbol component to type the props and to get the URL to the
-    // sprite.
-    nuxt.options.alias['#nuxt-svg-sprite/runtime'] = template.dst
-    nuxt.options.alias['#nuxt-svg-sprite/data'] = templateData.dst
-    nuxt.options.alias['#nuxt-svg-sprite/symbol-import'] =
-      templateSymbolImport.dst
 
     nuxt.hook('builder:watch', async (event, pathRelative) => {
       const isSvgFile = !!pathRelative.match(/\.(svg)$/)
