@@ -8,6 +8,7 @@ import {
   addTypeTemplate,
 } from '@nuxt/kit'
 import { createDevServerHandler } from './module/devServerHandler'
+import { joinURL, withLeadingSlash, withTrailingSlash } from 'ufo'
 import type { SpriteConfig, RuntimeOptions } from './types'
 import { Collector } from './module/Collector'
 
@@ -33,7 +34,7 @@ export default defineNuxtModule<ModuleOptions>({
     name: 'nuxt-svg-icon-sprite',
     configKey: 'svgIconSprite',
     compatibility: {
-      nuxt: '^3.9.0',
+      nuxt: '^3.15.0',
     },
   },
   defaults: {
@@ -75,10 +76,19 @@ export default defineNuxtModule<ModuleOptions>({
       ariaHidden: !!moduleOptions.ariaHidden,
     }
 
+    const buildAssetsDir = withLeadingSlash(
+      withTrailingSlash(
+        joinURL(
+          nuxt.options.app.baseURL.replace(/^\.\//, '/') || '/',
+          nuxt.options.app.buildAssetsDir,
+        ),
+      ),
+    )
+
     const collector = new Collector(moduleOptions.sprites, {
       dev: DEV,
       srcDir,
-      buildAssetDir: nuxt.options.app.buildAssetsDir,
+      buildAssetsDir,
       runtimeOptions,
       buildResolver,
     })
@@ -88,13 +98,13 @@ export default defineNuxtModule<ModuleOptions>({
       // During development the sprite is served by a server handler.
       addDevServerHandler({
         handler: createDevServerHandler(collector),
-        route: '/_nuxt/nuxt-svg-sprite',
+        route: `${buildAssetsDir}nuxt-svg-sprite`,
       })
     } else {
       // For the build the sprite is generated as a dist file.
       for (const sprite of collector.sprites) {
         const fileName = await sprite.getSpriteFileName()
-        const path = 'dist/client' + nuxt.options.app.buildAssetsDir + fileName
+        const path = 'dist/client' + buildAssetsDir + fileName
         addTemplate({
           filename: path,
           write: true,

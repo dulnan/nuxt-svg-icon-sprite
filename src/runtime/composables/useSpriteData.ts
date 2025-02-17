@@ -4,7 +4,7 @@ import { ALL_SYMBOL_KEYS } from '#nuxt-svg-sprite/data'
 
 type SpriteData = {
   symbols: NuxtSvgSpriteSymbol[]
-  spritePaths: typeof SPRITE_PATHS
+  spritePaths: Record<string, string>
 }
 
 export default function (): SpriteData {

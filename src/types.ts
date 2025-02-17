@@ -39,7 +39,7 @@ export type RuntimeOptions = {
 export type ModuleContext = {
   dev: boolean
   srcDir: string
-  buildAssetDir: string
+  buildAssetsDir: string
   runtimeOptions: RuntimeOptions
   buildResolver: Resolver
 }

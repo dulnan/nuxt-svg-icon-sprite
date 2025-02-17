@@ -15,6 +15,10 @@ export default defineNuxtConfig({
     '/spa/**': { ssr: false },
   },
 
+  app: {
+    buildAssetsDir: '/custom-build-assets-dir',
+  },
+
   vite: {
     server: {
       watch: {

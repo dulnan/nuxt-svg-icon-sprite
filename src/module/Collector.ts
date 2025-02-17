@@ -26,10 +26,10 @@ export class Collector {
       if (this.context.dev) {
         const { hash } = await sprite.getSprite()
         fileNames[sprite.name] =
-          `/_nuxt/nuxt-svg-sprite/sprite.${sprite.name}.${hash}.svg`
+          `${this.context.buildAssetsDir}nuxt-svg-sprite/sprite.${sprite.name}.${hash}.svg`
       } else {
         fileNames[sprite.name] =
-          this.context.buildAssetDir + (await sprite.getSpriteFileName())
+          this.context.buildAssetsDir + (await sprite.getSpriteFileName())
       }
     }
 
